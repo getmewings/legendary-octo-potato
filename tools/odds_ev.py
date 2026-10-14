@@ -15,7 +15,7 @@ dec = lambda o: 1 + 100 / -o if o < 0 else 1 + o / 100
 now = dt.datetime.now(dt.timezone.utc)
 print("pulled", now.strftime("%Y-%m-%d %H:%M UTC"))
 def run(slug):
-    url = f"https://www.sportsbookreview.com/betting-odds/{slug}/"
+    url = f"https://www.sportsbookreview.com/betting-odds/{slug}/money-line/full-game/"
     h = subprocess.run(["curl", "-sS", "-m", "30", "-A", "Mozilla/5.0", url],
                        capture_output=True, text=True).stdout
     m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', h, re.S)

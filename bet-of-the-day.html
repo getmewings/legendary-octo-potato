@@ -50,46 +50,48 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wed 14 Oct 2026 · NHL only</div>
+    <div class="eyebrow">Wed 14 Oct 2026 · NHL, NFL, college football</div>
     <h1>Bet of the Day</h1>
   </header>
 
   <section class="verdict" aria-labelledby="v">
-    <span class="pill mid">Model pick</span>
-    <div class="big" id="v">Colorado Avalanche moneyline, −135 at DraftKings.</div>
+    <span class="pill mid">Model pick · NFL</span>
+    <div class="big" id="v">Denver Broncos moneyline, +126 at FanDuel.</div>
     <div class="kv">
-      <div><b>59.6%</b><span>Model win %</span></div>
-      <div><b>55.6%</b><span>Market win %</span></div>
-      <div><b>+3.7%</b><span>EV on model</span></div>
-      <div><b>0.62%</b><span>Stake, bankroll</span></div>
+      <div><b>49.5%</b><span>Model win %</span></div>
+      <div><b>43.2%</b><span>Market win %</span></div>
+      <div><b>+11.9%</b><span>EV on model</span></div>
+      <div><b>1.00%</b><span>Stake, bankroll</span></div>
     </div>
-    <p>My own team ratings give Colorado a bigger edge over Dallas than the books price in. This is a model pick, sized at one-eighth Kelly. The blended price (70% market, 30% model) shows −1.1% EV, so it is not a Strong bet. Puck drops 8:30 pm ET. <b>Confirm both starting goalies before betting.</b> The ratings do not know who is in net.</p>
-    <p class="note">Prices pulled 14 Oct 2026 at about 18:50 UTC from eight US books. Lines move, so re-check before betting.</p>
+    <p>My team ratings make Denver a near coin flip at home against Seattle. The eight-book market has them at 43%. Blended 70% market and 30% model, the edge shrinks to +2.0%, so size it small. The stake is capped at 1% of bankroll. Kickoff is Thursday 8:15 pm ET.</p>
+    <p><b>Conditional on the quarterback.</b> The price assumes Bo Nix starts for Denver and Sam Darnold for Seattle. Both are healthy on the injury feed. Confirm both before betting. If either does not start, the pick is void.</p>
+    <p class="note">Prices and ratings pulled 14 Oct 2026 at about 19:10 UTC from eight US books. Lines move, so re-check before betting.</p>
   </section>
 
   <section>
-    <h2>Tonight's board</h2>
+    <h2>Today's board</h2>
     <div class="tw"><table>
       <thead><tr><th>Side</th><th>Model %</th><th>Best price</th><th>EV (model)</th><th>EV (blend)</th></tr></thead>
       <tbody>
-        <tr><td>COL</td><td>59.6</td><td>−135</td><td>+3.7%</td><td>−1.1%</td></tr>
-        <tr><td>DAL</td><td>40.4</td><td>+118</td><td>−11.9%</td><td>−5.9%</td></tr>
-        <tr><td>WSH</td><td>54.3</td><td>−115</td><td>+1.5%</td><td>−1.0%</td></tr>
-        <tr><td>MTL</td><td>45.7</td><td>+105</td><td>−6.3%</td><td>−3.5%</td></tr>
+        <tr><td>NFL DEN</td><td>49.5</td><td>+126</td><td>+11.9%</td><td>+2.0%</td></tr>
+        <tr><td>NHL COL</td><td>59.5</td><td>−135</td><td>+3.5%</td><td>−1.1%</td></tr>
+        <tr><td>CFB ECU</td><td>69.2</td><td>−178</td><td>+8.1%</td><td>+0.8%</td></tr>
+        <tr><td>CFB SHSU</td><td>54.1</td><td>−102</td><td>+7.1%</td><td>−0.3%</td></tr>
       </tbody>
     </table></div>
-    <p class="note">Dodgers–Brewers is not modeled. Only NHL has a rating model here.</p>
+    <p class="note">Other qualifying sides, ranked below Denver on blended EV. Colorado needs goalie Scott Wedgewood confirmed. College football has no lineup data, so check quarterback news before any college bet. Dodgers–Brewers is not modeled.</p>
   </section>
 
   <section class="premise">
     <h2>How the call is made</h2>
-    <p>Waiting for a book to misprice a line is one way to find value. This page also makes its own number. It rates every NHL team from game results since October 2024, with an Elo model that credits margin of victory, home ice and a pull back toward average each new season. It then compares its win probability to the eight-book market consensus.</p>
+    <p>Waiting for a book to misprice a line is one way to find value. This page also makes its own number. It rates every team in the NHL, NFL and college football from past results, with an Elo model that credits margin of victory, home field and a pull back toward average each new season. It then compares its win probability to the eight-book market consensus.</p>
     <ol>
       <li><b>Strong bet.</b> Blended EV of 2% or more. Quarter Kelly, capped at 2% of bankroll.</li>
       <li><b>Model pick.</b> Model-only EV of 3% or more. One-eighth Kelly, capped at 1%.</li>
       <li><b>No call.</b> Neither clears.</li>
     </ol>
-    <p>The model scores a log loss of 0.680 over 2,897 games, against 0.690 for always picking the home rate. The settings were tuned on the same games, so the true figure is slightly worse. It beats a naive baseline. It has not been shown to beat the market, and the ledger below is how that gets tested. The model's weight in the blend only goes up if the record earns it.</p>
+    <p><b>Fit.</b> NFL and college football settings were tuned before 2025, then scored on 2025: log loss 0.636 over 272 NFL games (0.690 for always picking the home rate) and 0.548 over 761 college games (0.676). The NHL settings were tuned on the same 2,897 games they are scored on, so 0.680 against 0.690 is slightly optimistic. These beat a naive baseline. None has been shown to beat the market, and the ledger below is how that gets tested. The model's weight in the blend only goes up if the record earns it.</p>
+    <p><b>Lineups.</b> Starting quarterbacks and goalies move prices more than anything the ratings see, so every call carries guards. NFL: the quarterback comes from the depth chart and the injury feed. A quarterback listed out or doubtful gets a fixed backup penalty, and a questionable one means no call. NHL: the goalie comes from DailyFaceoff, shifted by last season's save percentage. An unlisted goalie means no call. No call is made if the model and the market differ by more than 8 points (NHL) or 12 points (football), because a gap that large is usually news the model cannot see. Only moneylines between −300 and +300 qualify. A call is void if the named starter does not play.</p>
   </section>
 
   <section class="verdict" aria-labelledby="l">
@@ -101,20 +103,20 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
       <div><b id="lg-open">0</b><span>Open</span></div>
     </div>
     <div class="tw"><table id="lg-table">
-      <thead><tr><th>Date</th><th>Pick</th><th>Tier</th><th>Price</th><th>Stake</th><th>Result</th></tr></thead>
+      <thead><tr><th>Date</th><th>Sport</th><th>Pick</th><th>Tier</th><th>Price</th><th>Stake</th><th>Result</th></tr></thead>
       <tbody></tbody>
     </table></div>
-    <p class="note">Every Strong bet and Model pick is logged here at the price shown, then graded from final scores. A short record says little. Judge the model over hundreds of picks.</p>
+    <p class="note">Every Strong bet and Model pick is logged here at the price shown, then graded from final scores. A pick is marked Void, and not counted, if its named starter did not play. A short record says little. Judge the model over hundreds of picks.</p>
   </section>
 
   <section class="calc" aria-labelledby="c">
     <h2 id="c">Check any bet</h2>
-    <p class="note">Enter both sides' American odds from one book, then the best price on your side. Add your own win % to price a model pick. Prefilled with tonight's Colorado pick: DraftKings Dallas +114 and Colorado −135, best price −135, model 59.6%.</p>
+    <p class="note">Enter both sides' American odds from one book, then the best price on your side. Add your own win % to price a model pick. Prefilled with Denver: FanDuel Seattle −140 and Denver +126, best price +126, model 49.5%.</p>
     <div class="grid">
-      <label for="a">Other side, odds<input id="a" value="114"></label>
-      <label for="b">Your side, odds<input id="b" value="-135"></label>
-      <label for="p">Best price on your side<input id="p" value="-135"></label>
-      <label for="m">Your win % (optional)<input id="m" value="59.6"></label>
+      <label for="a">Other side, odds<input id="a" value="-140"></label>
+      <label for="b">Your side, odds<input id="b" value="126"></label>
+      <label for="p">Best price on your side<input id="p" value="126"></label>
+      <label for="m">Your win % (optional)<input id="m" value="49.5"></label>
       <label for="k">Bankroll ($)<input id="k" inputmode="decimal" value="1000"></label>
     </div>
     <div class="out">
@@ -131,7 +133,7 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
   <p class="rg">Only stake money you can afford to lose. If gambling stops being fun, call 1-800-GAMBLER (US) for free, confidential help. This page is analysis, not financial advice, and odds change by the minute.</p>
 </div>
 
-<script type="application/json" id="ledger">[{"date":"2026-10-14","pick":"COL ML","tier":"Model pick","price":-135,"stake":0.62,"result":null}]</script>
+<script type="application/json" id="ledger">[{"date":"2026-10-14","sport":"NHL","pick":"COL ML","tier":"Model pick","price":-135,"stake":0.59,"starters":"COL Wedgewood (likely), DAL DeSmith (confirmed)","result":null,"event":"nhl:2026-10-15:DAL@COL"},{"date":"2026-10-14","sport":"NFL","pick":"DEN ML","tier":"Model pick","price":126,"stake":1.00,"starters":"DEN Nix, SEA Darnold","result":null,"event":"nfl:2026-10-16:Seattle Seahawks@Denver Broncos"}]</script>
 <script>
 (function(){
   var $=function(i){return document.getElementById(i)};
@@ -160,10 +162,10 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
   try{
     var L=JSON.parse($('ledger').textContent),w=0,l=0,pl=0,open=0,tb=document.querySelector('#lg-table tbody');
     L.forEach(function(r){
-      var res=r.result==='W'?'Won':r.result==='L'?'Lost':'Open';
+      var res=r.result==='W'?'Won':r.result==='L'?'Lost':r.result==='V'?'Void':'Open';
       if(r.result==='W'){w++;pl+=r.stake*(dec(r.price)-1)}else if(r.result==='L'){l++;pl-=r.stake}else open++;
       var tr=document.createElement('tr');
-      [r.date,r.pick,r.tier,(r.price>0?'+':'\u2212')+Math.abs(r.price),r.stake.toFixed(2)+'%',res].forEach(function(t,i){
+      [r.date,r.sport||'NHL',r.pick,r.tier,(r.price>0?'+':'\u2212')+Math.abs(r.price),r.stake.toFixed(2)+'%',res].forEach(function(t,i){
         var td=document.createElement('td');td.textContent=t;tr.appendChild(td)});
       tb.appendChild(tr)});
     $('lg-n').textContent=w+l;$('lg-wl').textContent=w+'\u2013'+l;

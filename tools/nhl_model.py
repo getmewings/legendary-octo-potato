@@ -8,6 +8,12 @@
 Usage: python3 -I tools/nhl_model.py [YYYY-MM-DD]        model run (default: today UTC)
        python3 -I tools/nhl_model.py --finals YYYY-MM-DD  finals on that date, for grading
 
+Goalie workaround: starters and Confirmed/Likely status come from DailyFaceoff.
+  Confirmed or Likely -> call is allowed but names the goalie and is void if he does not start.
+  No starter listed   -> no call (PENDING).
+Also: model/market gap above 8 pts -> no call (usually news the model cannot see),
+      price band -300..+300, only games starting within 36 hours.
+
 Tiers (stake is % of bankroll):
   STRONG       blended EV >= 2%    quarter Kelly, cap 2%
   MODEL PICK   model-only EV >= 3% eighth Kelly, cap 1%
@@ -105,6 +111,41 @@ R, _, _ = run_elo(games, K, HA, carry)
 W = 0.30  # weight on model in the blend; raise only after the ledger earns it
 print(f"\nBlend weight on model: {W} (market prior {1-W})\n")
 
+def goalies():
+    """team nickname -> (goalie name, status or None) from DailyFaceoff."""
+    out = {}
+    try:
+        h = subprocess.run(["curl", "-sSL", "-m", "30", "-A", "Mozilla/5.0", "https://www.dailyfaceoff.com/starting-goalies"],
+                           capture_output=True, text=True).stdout
+        d = json.loads(re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', h, re.S).group(1))
+        for g in d["props"]["pageProps"]["data"]:
+            for side in ("home", "away"):
+                out[(g[side + "TeamName"].split()[-1], g["date"])] = (g[side + "GoalieName"], g[side + "NewsStrengthName"])
+    except Exception as e:
+        print("goalie pull failed", repr(e))
+    return out
+
+def goalie_adj(abbrev, name):
+    """Elo adjustment for today's goalie vs the team's usual mix, from last season's save %.
+
+    Save % is shrunk toward .905 with 40 games of prior. 0.010 of save % is
+    treated as about 35 Elo (assumption, not fitted). Unmatched name -> 0.
+    """
+    y = NOW.year if NOW.month >= 8 else NOW.year - 1
+    d = get(f"https://api-web.nhle.com/v1/club-stats/{abbrev}/{y-1}{y}/2")
+    gs = [(f"{g['firstName']['default']} {g['lastName']['default']}", g["gamesPlayed"], g["savePercentage"])
+          for g in (d or {}).get("goalies", []) if g.get("savePercentage")]
+    shrunk = lambda sv, gp: (sv * gp + 0.905 * 40) / (gp + 40)
+    tot = sum(gp for _, gp, _ in gs)
+    if not tot or not name:
+        return 0.0, "no data"
+    team = shrunk(sum(sv * gp for _, gp, sv in gs) / tot, tot)
+    m = [x for x in gs if x[0] == name]
+    if not m:
+        return 0.0, "goalie unrated"
+    _, gp, sv = m[0]
+    return 3500 * (shrunk(sv, gp) - team), f"{shrunk(sv, gp):.3f} vs team {team:.3f}"
+
 def stake(ev, p, d, frac, cap):
     k = ev / (d - 1)
     return min(k * frac, cap) * 100
@@ -114,20 +155,36 @@ try:
 except Exception as e:
     print("odds pull failed", repr(e)); slate = []
 calls = []
+G = goalies()
+NOW = dt.datetime.now(dt.timezone.utc)
 for away, home, start, rows in slate:
+    if not (NOW < dt.datetime.fromisoformat(start) < NOW + dt.timedelta(hours=36)):
+        continue
     a, h = NAMES.get(away), NAMES.get(home)
     if a not in R or h not in R:
         print(f"{away} @ {home}  UNRATED (add mapping)"); continue
-    pm_h = 1 / (1 + 10 ** (-(R[h] + HA - R[a]) / 400))
     mk_h = 1 - st.mean(imp(x) / (imp(x) + imp(y)) for _, x, y in rows)
+    gk = {}
+    for nick, ab in ((away, a), (home, h)):
+        gk[ab] = G.get((nick, start[:10])) or G.get((nick, (dt.datetime.fromisoformat(start) - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))) or (None, None)
+    gnote = "goalies " + ", ".join(f"{ab} {n} ({s_ or 'unlisted'})" for ab, (n, s_) in gk.items())
+    pending = any(n is None or s_ is None for n, s_ in gk.values())
+    adjs = {ab: goalie_adj(ab, n) for ab, (n, _) in gk.items()}
+    pm_h = 1 / (1 + 10 ** (-((R[h] + adjs[h][0]) + HA - (R[a] + adjs[a][0])) / 400))
+    gnote += " | goalie adj Elo " + ", ".join(f"{ab} {x[0]:+.0f} ({x[1]})" for ab, x in adjs.items())
     p_h = (1 - W) * mk_h + W * pm_h
-    print(f"{a} @ {h}  {start[11:16]}Z  home: model {pm_h:.3f}  market {mk_h:.3f}  blend {p_h:.3f}  books={len(rows)}")
+    gap = abs(pm_h - mk_h)
+    print(f"{a} @ {h}  {start[11:16]}Z  home: model {pm_h:.3f}  market {mk_h:.3f}  blend {p_h:.3f}  books={len(rows)}  gap {gap:.3f}\n   {gnote}")
     for side, team, pb, pmod, i in (("away", a, 1 - p_h, 1 - pm_h, 1), ("home", h, p_h, pm_h, 2)):
         b = max(rows, key=lambda r: dec(r[i]))
         d = dec(b[i])
         ev_b = pb * (d - 1) - (1 - pb)
         ev_m = pmod * (d - 1) - (1 - pmod)
         tier = "STRONG" if ev_b >= .02 else ("MODEL PICK" if ev_m >= .03 else "")
+        why = ""
+        if tier and not (-300 <= b[i] <= 300): tier, why = "", "outside price band"
+        if tier and gap > 0.08: tier, why = "", "model/market gap too big (likely lineup news)"
+        if tier and pending: tier, why = "", "goalie not listed"
         if tier == "STRONG":
             stk = stake(ev_b, pb, d, .25, .02)
         elif tier:
@@ -135,9 +192,10 @@ for away, home, start, rows in slate:
         else:
             stk = 0
         print(f"   {team:3} blend {pb:.3f} model {pmod:.3f}  best {b[0]} {b[i]:+d}  EV blend {ev_b*100:+.1f}% model {ev_m*100:+.1f}%"
-              + (f"  <-- {tier} stake {stk:.2f}%" if tier else ""))
+              + (f"  <-- {tier} stake {stk:.2f}%" if tier else (f"  [no call: {why}]" if why else "")))
         if tier:
-            calls.append(dict(tier=tier, game=f"{a}@{h}", team=team, side=side, book=b[0], price=b[i],
+            calls.append(dict(sport="nhl", event_id=f"nhl:{start[:10]}:{a}@{h}", starters={ab: f"{n} ({s_})" for ab, (n, s_) in gk.items()},
+                              conditional="bet only after goalie confirmed; void if the goalie does not start", books=len(rows), tier=tier, game=f"{a}@{h}", team=team, side=side, book=b[0], price=b[i],
                               model=round(pmod, 3), market=round(1 - mk_h if side == "away" else mk_h, 3),
                               ev_blend=round(ev_b, 4), ev_model=round(ev_m, 4), stake_pct=round(stk, 2), start=start))
 print("\nCALLS_JSON", json.dumps(calls))
