@@ -11,15 +11,18 @@ Usage: python3 -I tools/nhl_model.py [YYYY-MM-DD]        model run (default: tod
 Goalie workaround: starters and Confirmed/Likely status come from DailyFaceoff.
   Confirmed or Likely -> call is allowed but names the goalie and is void if he does not start.
   No starter listed   -> no call (PENDING).
+Dates: a call must start today, by the America/New_York calendar, and after now.
 Also: model/market gap above 8 pts -> no call (usually news the model cannot see),
       price band -300..+300, only games starting within 36 hours.
 
 Tiers (stake is % of bankroll):
   STRONG       blended EV >= 2%    quarter Kelly, cap 2%
-  MODEL PICK   model-only EV >= 3% eighth Kelly, cap 1%
+  MODEL PICK   model-only EV >= 3% and blended EV >= 0   eighth Kelly, cap 1%
   NO CALL      neither
 """
 import json, math, re, subprocess, sys, statistics as st, datetime as dt
+from zoneinfo import ZoneInfo
+ET = ZoneInfo("America/New_York")
 from itertools import product
 
 FINALS = len(sys.argv) > 2 and sys.argv[1] == "--finals"
@@ -29,16 +32,27 @@ START = dt.date(2024, 10, 4)
 imp = lambda o: -o / (-o + 100) if o < 0 else 100 / (o + 100)
 dec = lambda o: 1 + 100 / -o if o < 0 else 1 + o / 100
 
-def get(url):
-    r = subprocess.run(["curl", "-sS", "-m", "30", url], capture_output=True, text=True)
-    return json.loads(r.stdout)
+FETCH_FAILURES = []
+
+def get(url, need=None):
+    """GET JSON with retries. A response missing `need` counts as a failure."""
+    for i in range(4):
+        r = subprocess.run(["curl", "-sS", "-m", "40", "-A", "Mozilla/5.0", url], capture_output=True, text=True)
+        try:
+            d = json.loads(r.stdout)
+            if need is None or need in d:
+                return d
+        except Exception:
+            pass
+    FETCH_FAILURES.append(url)
+    return None
 
 NAMES = {}  # nickname -> abbrev
 
 def fetch():
     games, upcoming, d = {}, [], START
     while d <= TODAY + dt.timedelta(days=1):
-        wk = get(f"https://api-web.nhle.com/v1/schedule/{d}")
+        wk = get(f"https://api-web.nhle.com/v1/schedule/{d}", need="gameWeek")
         for day in wk["gameWeek"]:
             for g in day["games"]:
                 for side in ("awayTeam", "homeTeam"):
@@ -99,6 +113,9 @@ if FINALS:
     sys.exit()
 
 games, upcoming = fetch()
+if FETCH_FAILURES:
+    print(f"FETCH_FAILURES {len(FETCH_FAILURES)}: results incomplete, refusing to rate.")
+    print("CALLS_JSON []"); sys.exit(1)
 print(f"{len(games)} finished games, {len(upcoming)} upcoming, through {TODAY}")
 home_rate = sum(1 for g in games if g[4] > g[3]) / len(games)
 base = -(home_rate * math.log(home_rate) + (1 - home_rate) * math.log(1 - home_rate))
@@ -158,7 +175,8 @@ calls = []
 G = goalies()
 NOW = dt.datetime.now(dt.timezone.utc)
 for away, home, start, rows in slate:
-    if not (NOW < dt.datetime.fromisoformat(start) < NOW + dt.timedelta(hours=36)):
+    st_et = dt.datetime.fromisoformat(start).astimezone(ET)
+    if not (NOW < dt.datetime.fromisoformat(start) and st_et.date() == NOW.astimezone(ET).date()):
         continue
     a, h = NAMES.get(away), NAMES.get(home)
     if a not in R or h not in R:
@@ -166,7 +184,7 @@ for away, home, start, rows in slate:
     mk_h = 1 - st.mean(imp(x) / (imp(x) + imp(y)) for _, x, y in rows)
     gk = {}
     for nick, ab in ((away, a), (home, h)):
-        gk[ab] = G.get((nick, start[:10])) or G.get((nick, (dt.datetime.fromisoformat(start) - dt.timedelta(hours=5)).strftime("%Y-%m-%d"))) or (None, None)
+        gk[ab] = G.get((nick, st_et.strftime("%Y-%m-%d"))) or (None, None)
     gnote = "goalies " + ", ".join(f"{ab} {n} ({s_ or 'unlisted'})" for ab, (n, s_) in gk.items())
     pending = any(n is None or s_ is None for n, s_ in gk.values())
     adjs = {ab: goalie_adj(ab, n) for ab, (n, _) in gk.items()}
@@ -174,13 +192,13 @@ for away, home, start, rows in slate:
     gnote += " | goalie adj Elo " + ", ".join(f"{ab} {x[0]:+.0f} ({x[1]})" for ab, x in adjs.items())
     p_h = (1 - W) * mk_h + W * pm_h
     gap = abs(pm_h - mk_h)
-    print(f"{a} @ {h}  {start[11:16]}Z  home: model {pm_h:.3f}  market {mk_h:.3f}  blend {p_h:.3f}  books={len(rows)}  gap {gap:.3f}\n   {gnote}")
+    print(f"{a} @ {h}  {st_et:%a %d %b %H:%M} ET  home: model {pm_h:.3f}  market {mk_h:.3f}  blend {p_h:.3f}  books={len(rows)}  gap {gap:.3f}\n   {gnote}")
     for side, team, pb, pmod, i in (("away", a, 1 - p_h, 1 - pm_h, 1), ("home", h, p_h, pm_h, 2)):
         b = max(rows, key=lambda r: dec(r[i]))
         d = dec(b[i])
         ev_b = pb * (d - 1) - (1 - pb)
         ev_m = pmod * (d - 1) - (1 - pmod)
-        tier = "STRONG" if ev_b >= .02 else ("MODEL PICK" if ev_m >= .03 else "")
+        tier = "STRONG" if ev_b >= .02 else ("MODEL PICK" if ev_m >= .03 and ev_b >= 0 else "")
         why = ""
         if tier and not (-300 <= b[i] <= 300): tier, why = "", "outside price band"
         if tier and gap > 0.08: tier, why = "", "model/market gap too big (likely lineup news)"
@@ -194,7 +212,7 @@ for away, home, start, rows in slate:
         print(f"   {team:3} blend {pb:.3f} model {pmod:.3f}  best {b[0]} {b[i]:+d}  EV blend {ev_b*100:+.1f}% model {ev_m*100:+.1f}%"
               + (f"  <-- {tier} stake {stk:.2f}%" if tier else (f"  [no call: {why}]" if why else "")))
         if tier:
-            calls.append(dict(sport="nhl", event_id=f"nhl:{start[:10]}:{a}@{h}", starters={ab: f"{n} ({s_})" for ab, (n, s_) in gk.items()},
+            calls.append(dict(sport="nhl", event_id=f"nhl:{st_et:%Y-%m-%d}:{a}@{h}", date_et=f"{st_et:%Y-%m-%d}", start_et=f"{st_et:%a %d %b %H:%M} ET", starters={ab: f"{n} ({s_})" for ab, (n, s_) in gk.items()},
                               conditional="bet only after goalie confirmed; void if the goalie does not start", books=len(rows), tier=tier, game=f"{a}@{h}", team=team, side=side, book=b[0], price=b[i],
                               model=round(pmod, 3), market=round(1 - mk_h if side == "away" else mk_h, 3),
                               ev_blend=round(ev_b, 4), ev_model=round(ev_m, 4), stake_pct=round(stk, 2), start=start))

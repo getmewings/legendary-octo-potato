@@ -15,9 +15,12 @@ Lineup workaround (no live QB feed is reliable):
   * Disagreement cap: model vs market gap above 12 pts -> no call, because a gap that
     large is usually lineup news the model cannot see.
   * Price band: only moneylines between -300 and +300.
+  * Dates: a call must start today by the America/New_York calendar, and after now.
   * Conditional: every call names the QB it assumes and is void if he does not start.
 """
 import json, math, re, subprocess, sys, statistics as st, datetime as dt
+from zoneinfo import ZoneInfo
+ET = ZoneInfo("America/New_York")
 from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 
@@ -35,15 +38,23 @@ imp = lambda o: -o / (-o + 100) if o < 0 else 100 / (o + 100)
 dec = lambda o: 1 + 100 / -o if o < 0 else 1 + o / 100
 norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
 
-def get(url):
-    r = subprocess.run(["curl", "-sS", "-m", "40", "-A", "Mozilla/5.0", url], capture_output=True, text=True)
-    try:
-        return json.loads(r.stdout)
-    except Exception:
-        return None
+FETCH_FAILURES = []
+
+def get(url, need=None):
+    """GET JSON with retries. A response missing `need` counts as a failure."""
+    for i in range(4):
+        r = subprocess.run(["curl", "-sS", "-m", "40", "-A", "Mozilla/5.0", url], capture_output=True, text=True)
+        try:
+            d = json.loads(r.stdout)
+            if need is None or need in d:
+                return d
+        except Exception:
+            pass
+    FETCH_FAILURES.append(url)
+    return None
 
 def sb(q):
-    return get(f"https://site.api.espn.com/apis/site/v2/sports/football/{CFG['espn']}/scoreboard?{q}")
+    return get(f"https://site.api.espn.com/apis/site/v2/sports/football/{CFG['espn']}/scoreboard?{q}", need="events")
 
 def parse_event(e):
     c = e["competitions"][0]
@@ -155,7 +166,7 @@ def qb_status():
 
 def neutral_map():
     m = {}
-    for dd in {(NOW + dt.timedelta(days=i)).strftime("%Y%m%d") for i in range(0, 3)}:
+    for dd in {(NOW.astimezone(ET) + dt.timedelta(days=i)).strftime("%Y%m%d") for i in range(0, 2)}:
         d = sb(f"dates={dd}{CFG['extra']}")
         for e in (d or {}).get("events", []):
             e, c, h, a = parse_event(e)
@@ -163,6 +174,9 @@ def neutral_map():
     return m
 
 games = fetch_games()
+if FETCH_FAILURES:
+    print(f"FETCH_FAILURES {len(FETCH_FAILURES)}: results incomplete, refusing to rate.")
+    print("CALLS_JSON []"); sys.exit(1)
 last_full = YEAR - 1
 tune = [g for g in games if g["y"] < last_full]
 grid = product((10, 15, 20, 28), (30, 48, 65), (0.55, 0.7, 0.85)) if LEAGUE == "nfl" else product((12, 20, 30, 40), (45, 65, 85), (0.5, 0.65, 0.8))
@@ -191,7 +205,8 @@ def stake(ev, d, frac, cap):
 
 for away, home, start, rows in slate:
     st_dt = dt.datetime.fromisoformat(start)
-    if not (NOW < st_dt < NOW + dt.timedelta(hours=36)):
+    st_et = st_dt.astimezone(ET)
+    if not (NOW < st_dt and st_et.date() == NOW.astimezone(ET).date()):
         continue
     a, h = by_norm.get(norm(away)), by_norm.get(norm(home))
     if not a or not h:
@@ -213,14 +228,14 @@ for away, home, start, rows in slate:
     p_h = (1 - W) * mk_h + W * pm_h
     gap = abs(pm_h - mk_h)
     starters = {tm: qbs.get(tm, (None, ""))[0] for tm in (a, h)} if LEAGUE == "nfl" else {}
-    print(f"{a} @ {h}  {start[:16]}Z{' neutral' if neutral else ''}  home: model {pm_h:.3f} market {mk_h:.3f} blend {p_h:.3f} gap {gap:.3f} books={len(rows)}"
+    print(f"{a} @ {h}  {st_et:%a %d %b %H:%M} ET{' neutral' if neutral else ''}  home: model {pm_h:.3f} market {mk_h:.3f} blend {p_h:.3f} gap {gap:.3f} books={len(rows)}"
           + ("  " + "; ".join(notes) if notes else ""))
     for side, team, pb, pmod, i in (("away", a, 1 - p_h, 1 - pm_h, 1), ("home", h, p_h, pm_h, 2)):
         b = max(rows, key=lambda r: dec(r[i]))
         d = dec(b[i])
         ev_b = pb * (d - 1) - (1 - pb)
         ev_m = pmod * (d - 1) - (1 - pmod)
-        tier = "STRONG" if ev_b >= .02 else ("MODEL PICK" if ev_m >= .03 else "")
+        tier = "STRONG" if ev_b >= .02 else ("MODEL PICK" if ev_m >= .03 and ev_b >= 0 else "")
         why = ""
         if tier and not (BAND[0] <= b[i] <= BAND[1]): tier, why = "", "outside price band"
         if tier and gap > DISAGREE_CAP: tier, why = "", "model/market gap too big (likely lineup news)"
@@ -229,7 +244,7 @@ for away, home, start, rows in slate:
         print(f"   {team[:22]:22} blend {pb:.3f} model {pmod:.3f} best {b[0]} {b[i]:+d} EV blend {ev_b*100:+.1f}% model {ev_m*100:+.1f}%"
               + (f"  <-- {tier} stake {stk:.2f}%" if tier else (f"  [no call: {why}]" if why else "")))
         if tier:
-            calls.append(dict(sport=LEAGUE, tier=tier, event_id=f"{LEAGUE}:{start[:10]}:{a}@{h}", game=f"{a}@{h}", team=team,
+            calls.append(dict(sport=LEAGUE, tier=tier, event_id=f"{LEAGUE}:{st_et:%Y-%m-%d}:{a}@{h}", date_et=f"{st_et:%Y-%m-%d}", start_et=f"{st_et:%a %d %b %H:%M} ET", game=f"{a}@{h}", team=team,
                               side=side, book=b[0], price=b[i], model=round(pmod, 3),
                               market=round((1 - mk_h) if side == "away" else mk_h, 3), ev_blend=round(ev_b, 4),
                               ev_model=round(ev_m, 4), stake_pct=round(stk, 2), start=start, books=len(rows),
