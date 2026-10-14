@@ -1,0 +1,123 @@
+<title>Bet of the Day</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow ledger column. Verdict on top, working beneath, calculator last. */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --fg:#16201b; --muted:#5b6a62; --line:#d5ddd7;
+  --accent:#1f5d46; --good:#1f7a4d; --warn:#9a6a00; --stop:#a3342b;
+  --display:"Fraunces",Georgia,serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1713; --surface:#16211b; --fg:#e6ede8; --muted:#93a399; --line:#27362d;
+  --accent:#6fc79f; --good:#6fd39c; --warn:#e2b04a; --stop:#ef8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1713; --surface:#16211b; --fg:#e6ede8; --muted:#93a399; --line:#27362d;
+  --accent:#6fc79f; --good:#6fd39c; --warn:#e2b04a; --stop:#ef8a80; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body)}
+.wrap{max-width:44rem;margin:0 auto;padding-block:28px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(2rem,6vw,2.8rem)/1.05 var(--display);margin:6px 0 0;text-wrap:balance}
+h2{font:600 1.25rem var(--display);margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 10px;max-width:65ch}
+.verdict{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.pill{align-self:flex-start;font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:3px;border:1px solid currentColor}
+.pill.stop{color:var(--stop)} .pill.go{color:var(--good)}
+.verdict .big{font:600 clamp(1.5rem,5vw,2rem)/1.15 var(--display)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;font-variant-numeric:tabular-nums}
+dt{color:var(--muted)} dd{margin:0;font-family:var(--mono);font-size:14px;min-width:0;overflow-wrap:anywhere}
+.premise{border-left:3px solid var(--warn);padding:2px 0 2px 14px}
+ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:65ch}
+.calc{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:12px;margin:12px 0}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input{font:500 16px var(--mono);padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);min-width:0}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.out{margin-top:6px}
+.note{font-size:13px;color:var(--muted)}
+.rg{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Wed 14 Oct 2026 · NHL slate · no MLB prices found</div>
+    <h1>Bet of the Day</h1>
+  </header>
+
+  <section class="verdict" aria-labelledby="v">
+    <span class="pill stop">No bet today</span>
+    <div class="big" id="v">Nothing on tonight's slate clears a verified 2% edge.</div>
+    <p>Pros pass on most days. I could reach one sportsbook's prices (FanDuel) and tout picks, but no sharp two-sided line from Pinnacle or Circa. Without that anchor the fair price is a guess, so I am not calling a bet.</p>
+    <dl>
+      <dt>Closest look</dt><dd>Stars +132 vs Avalanche −161 at one book</dd>
+      <dt>Devigged (that book)</dt><dd>COL 58.9% / DAL 41.1%, vig (overround) ≈ 4.8%</dd>
+      <dt>Best model I found</dt><dd>numberFire COL 56.6% → DAL EV ≈ +0.7%, below threshold</dd>
+      <dt>Price source</dt><dd>Published previews, 14 Oct 2026, no timestamp. Re-check before betting.</dd>
+    </dl>
+  </section>
+
+  <section class="premise">
+    <h2>No method makes betting reliable</h2>
+    <p>Sportsbooks build a margin into every price and the sharpest ones are right far more often than any model you or I can build. The goal is small, repeatable, positive expected value, sized so a losing streak cannot end the bankroll. A bet of the day is a candidate with a measured edge, never a promise of a win.</p>
+  </section>
+
+  <section>
+    <h2>How the pick is made</h2>
+    <ol>
+      <li><b>Fair price.</b> Take a sharp market (Pinnacle, Circa, Bookmaker). Remove the vig by dividing each implied probability by their sum.</li>
+      <li><b>Line shop.</b> Compare that fair probability to the best price across soft books.</li>
+      <li><b>Edge.</b> Bet only if EV is at least 2%.</li>
+      <li><b>Stake.</b> Quarter Kelly, capped at 2% of bankroll.</li>
+      <li><b>Prove it.</b> Track closing line value. If your bets beat the closing price over hundreds of wagers, the process works, whatever the short-term record says.</li>
+    </ol>
+  </section>
+
+  <section class="calc" aria-labelledby="c">
+    <h2 id="c">Check any bet</h2>
+    <p class="note">Enter the sharp book's American odds for both sides, then the best price you can get on the side you want. Prefilled with the example above, not a recommendation.</p>
+    <div class="grid">
+      <label for="a">Sharp odds, side A<input id="a" value="-161"></label>
+      <label for="b">Sharp odds, side B (your side)<input id="b" value="132"></label>
+      <label for="p">Best price on side B<input id="p" value="132"></label>
+      <label for="k">Bankroll ($)<input id="k" inputmode="decimal" value="1000"></label>
+    </div>
+    <div class="out">
+      <span class="pill stop" id="pill">No bet</span>
+      <dl style="margin-top:12px">
+        <dt>Fair win %</dt><dd id="fair">–</dd>
+        <dt>Vig (overround)</dt><dd id="hold">–</dd>
+        <dt>EV per $1</dt><dd id="ev">–</dd>
+        <dt>¼ Kelly stake</dt><dd id="stake">–</dd>
+      </dl>
+    </div>
+  </section>
+
+  <p class="rg">Only stake money you can afford to lose. If gambling stops being fun, call 1-800-GAMBLER (US) for free, confidential help. This page is analysis, not financial advice, and odds change by the minute.</p>
+</div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  function imp(o){return o<0?-o/(-o+100):100/(o+100)}
+  function dec(o){return o<0?1+100/-o:1+o/100}
+  function run(){
+    var a=+$('a').value,b=+$('b').value,p=+$('p').value,k=+$('k').value;
+    var ok=[a,b,p].every(function(x){return isFinite(x)&&Math.abs(x)>=100});
+    if(!ok){$('pill').textContent='Check inputs';$('pill').className='pill stop';
+      ['fair','hold','ev','stake'].forEach(function(i){$(i).textContent='–'});return}
+    var ia=imp(a),ib=imp(b),s=ia+ib,fair=ib/s,d=dec(p);
+    var ev=fair*(d-1)-(1-fair);
+    var kelly=ev>0?ev/(d-1):0;
+    var frac=Math.min(kelly/4,0.02);
+    var go=ev>=0.02;
+    $('fair').textContent=(fair*100).toFixed(1)+'%';
+    $('hold').textContent=((s-1)*100).toFixed(1)+'%';
+    $('ev').textContent=(ev>=0?'+':'')+(ev*100).toFixed(1)+'%';
+    $('stake').textContent=go?(frac*100).toFixed(2)+'% ($'+(frac*(isFinite(k)?k:0)).toFixed(2)+')':'0%';
+    $('pill').textContent=go?'Bet':'No bet';
+    $('pill').className='pill '+(go?'go':'stop');
+  }
+  ['a','b','p','k'].forEach(function(i){$(i).addEventListener('input',run)});
+  run();
+})();
+</script>
