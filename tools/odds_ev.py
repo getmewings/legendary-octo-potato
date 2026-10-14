@@ -14,13 +14,13 @@ dec = lambda o: 1 + 100 / -o if o < 0 else 1 + o / 100
 
 now = dt.datetime.now(dt.timezone.utc)
 print("pulled", now.strftime("%Y-%m-%d %H:%M UTC"))
-for slug in SLUGS:
+def run(slug):
     url = f"https://www.sportsbookreview.com/betting-odds/{slug}/"
     h = subprocess.run(["curl", "-sS", "-m", "30", "-A", "Mozilla/5.0", url],
                        capture_output=True, text=True).stdout
     m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', h, re.S)
     if not m:
-        print(slug, "no data"); continue
+        print(slug, "no data"); return
     d = json.loads(m.group(1))
     for t in d["props"]["pageProps"]["oddsTables"]:
         for g in t["oddsTableModel"]["gameRows"]:
@@ -30,8 +30,8 @@ for slug in SLUGS:
                 continue
             rows = [(o["sportsbook"], o["currentLine"]["awayOdds"], o["currentLine"]["homeOdds"])
                     for o in g["oddsViews"]
-                    if o and "MoneyLine" in o["viewType"]
-                    and o["currentLine"]["awayOdds"] and o["currentLine"]["homeOdds"]]
+                    if o and "MoneyLine" in o["viewType"] and o.get("currentLine")
+                    and o["currentLine"].get("awayOdds") and o["currentLine"].get("homeOdds")]
             if len(rows) < 4:
                 continue
             fa = [imp(a) / (imp(a) + imp(h_)) for _, a, h_ in rows]
@@ -45,3 +45,10 @@ for slug in SLUGS:
                 ev = p * (dec(b[i]) - 1) - (1 - p)
                 flag = "  <-- BET" if ev >= THRESH else ""
                 print(f"  {name:4} fair {p*100:.1f}%  best {b[0]} {b[i]:+d}  EV {ev*100:+.1f}%{flag}")
+
+
+for slug in SLUGS:
+    try:
+        run(slug)
+    except Exception as e:
+        print(slug, "error", repr(e))
