@@ -13,6 +13,7 @@
 ;   2. Run this script once to create D2RJoin.ini next to it, then edit:
 ;        [Game]    Prefix, Password (prefix + 3 digits must be 15 chars or less)
 ;        [Windows] LeaderID = account ID that creates games (0 = none)
+;                  SkipIDs  = accounts you always join by hand, eg "3,5"
 ;        [Join]    FieldNav = tab   -> name field must have the cursor
 ;                  FieldNav = click -> clicks NameField / PassField (calibrate)
 ;   3. Leave each follower window on the Join Game tab.
@@ -21,6 +22,7 @@
 ;   Ctrl+Alt+N  next game: counter +1, game name copied for the leader window
 ;   Ctrl+Alt+J  join the next follower window (lowest account ID first)
 ;   Ctrl+Alt+B  step back: the last joined window becomes next again
+;   Ctrl+Alt+M  mark the active window as joined (you joined it by hand)
 ;   Ctrl+Alt+K  calibrate: copy mouse position (as window ratio) for click mode
 ;   Ctrl+Alt+R  reload script after editing D2RJoin.ini
 
@@ -34,6 +36,10 @@ GamePrefix   := IniRead(IniFile, "Game", "Prefix")
 GamePassword := IniRead(IniFile, "Game", "Password")
 Counter      := Integer(IniRead(IniFile, "Game", "Counter"))
 LeaderID     := Integer(IniRead(IniFile, "Windows", "LeaderID"))
+SkipIDs      := []
+for id in StrSplit(IniRead(IniFile, "Windows", "SkipIDs"), ",", " ")
+    if id != ""
+        SkipIDs.Push(Integer(id))
 AutoEnter    := IniRead(IniFile, "Join", "AutoEnter") = "1"
 FieldNav     := IniRead(IniFile, "Join", "FieldNav")
 NameField    := IniRead(IniFile, "Join", "NameField")
@@ -53,6 +59,7 @@ TrayTip "Ctrl+Alt+N new game, Ctrl+Alt+J join next window", "D2RJoin ready"
 ^!n::NewGame()
 ^!j::JoinNext()
 ^!b::StepBack()
+^!m::MarkJoined()
 ^!k::Calibrate()
 ^!r::Reload()
 
@@ -119,6 +126,18 @@ StepBack() {
     Tip("Account " Joined.Pop() " is next again.")
 }
 
+; For a window you joined by hand, so Ctrl+Alt+J doesn't type into it in-game.
+MarkJoined() {
+    if !RegExMatch(WinGetTitle("A"), TitleRegex) || !RegExMatch(WinGetTitle("A"), "^(\d+) ", &m) {
+        Tip("Active window isn't a loader D2R window.")
+        return
+    }
+    id := Integer(m[1])
+    if !HasValue(Joined, id)
+        Joined.Push(id)
+    Tip("Account " id " marked as joined.")
+}
+
 ; Hover the mouse over a field in the active D2R window, then press Ctrl+Alt+K.
 Calibrate() {
     CoordMode "Mouse", "Client"
@@ -155,7 +174,7 @@ GetFollowers() {
         if !RegExMatch(WinGetTitle(hwnd), "^(\d+) ", &m)
             continue
         id := Integer(m[1])
-        if id = LeaderID
+        if id = LeaderID || HasValue(SkipIDs, id)
             continue
         i := 1
         while i <= found.Length && found[i].id < id
@@ -192,6 +211,7 @@ EnsureIni() {
         ["Game", "Password", ""],
         ["Game", "Counter", "0"],
         ["Windows", "LeaderID", "1"],
+        ["Windows", "SkipIDs", ""],
         ["Join", "AutoEnter", "1"],
         ["Join", "FieldNav", "tab"],
         ["Join", "NameField", "0.800,0.300"],
