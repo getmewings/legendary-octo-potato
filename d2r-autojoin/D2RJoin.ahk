@@ -267,7 +267,7 @@ EnsureIni() {
         ["Join", "PassField", "0.800,0.360"],
         ["Join", "KeyDelayMs", "15"],
         ["Join", "JoinAllEnabled", "0"],
-        ["Join", "JoinAllGapMs", "400"],
+        ["Join", "JoinAllGapMs", "2500"],
     ]
     for d in defaults
         if IniRead(IniFile, d[1], d[2], "<missing>") = "<missing>"
