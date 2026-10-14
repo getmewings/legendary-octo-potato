@@ -1,0 +1,40 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v node >/dev/null 2>&1 || exit 0; d=\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"; mkdir -p \"$d\" && touch \"$d/.caveman-nudge-shown\"; CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/caveman/hooks/caveman-activate.js\"",
+            "timeout": 30,
+            "statusMessage": "Loading caveman mode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v node >/dev/null 2>&1 || exit 0; CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/caveman/hooks/caveman-activate.js\" --subagent",
+            "timeout": 30,
+            "statusMessage": "Loading caveman mode for subagent..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v node >/dev/null 2>&1 || exit 0; CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/caveman/hooks/caveman-mode-tracker.js\"",
+            "timeout": 30,
+            "statusMessage": "Tracking caveman mode..."
+          }
+        ]
+      }
+    ]
+  }
+}
