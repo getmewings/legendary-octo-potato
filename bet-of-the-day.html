@@ -35,25 +35,36 @@ input{font:500 16px var(--mono);padding:8px 10px;border:1px solid var(--line);bo
 input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .out{margin-top:6px}
 .note{font-size:13px;color:var(--muted)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
 .rg{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wed 14 Oct 2026 · NHL slate · no MLB prices found</div>
+    <div class="eyebrow">Wed 14 Oct 2026 · NHL slate + Dodgers–Brewers NLCS Game 3</div>
     <h1>Bet of the Day</h1>
   </header>
 
   <section class="verdict" aria-labelledby="v">
     <span class="pill stop">No bet today</span>
-    <div class="big" id="v">Nothing on tonight's slate clears a verified 2% edge.</div>
-    <p>Pros pass on most days. I could reach one sportsbook's prices (FanDuel) and tout picks, but no sharp two-sided line from Pinnacle or Circa. Without that anchor the fair price is a guess, so I am not calling a bet.</p>
-    <dl>
-      <dt>Closest look</dt><dd>Stars +132 vs Avalanche −161 at one book</dd>
-      <dt>Devigged (that book)</dt><dd>COL 58.9% / DAL 41.1%, vig (overround) ≈ 4.8%</dd>
-      <dt>Best model I found</dt><dd>numberFire COL 56.6% → DAL EV ≈ +0.7%, below threshold</dd>
-      <dt>Price source</dt><dd>Published previews, 14 Oct 2026, no timestamp. Re-check before betting.</dd>
-    </dl>
+    <div class="big" id="v">Every moneyline tonight is negative EV at its best price.</div>
+    <p>Pros pass on most days. I compared eight US books on each game and removed the vig from each book, then averaged. No Pinnacle or Circa line was available, so this anchor is weaker than a sharp book. Even so, the best price on every side is 2% to 4% below fair, so nothing qualifies.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Game</th><th>Fair win %</th><th>Best price</th><th>EV</th></tr></thead>
+      <tbody>
+        <tr><td>MTL @ WSH</td><td>MTL 47.6</td><td>+105</td><td>−2.3%</td></tr>
+        <tr><td></td><td>WSH 52.4</td><td>−115</td><td>−2.1%</td></tr>
+        <tr><td>DAL @ COL</td><td>DAL 44.4</td><td>+118</td><td>−3.3%</td></tr>
+        <tr><td></td><td>COL 55.6</td><td>−135</td><td>−3.2%</td></tr>
+        <tr><td>MIL @ LAD</td><td>MIL 38.9</td><td>+150</td><td>−2.7%</td></tr>
+        <tr><td></td><td>LAD 61.1</td><td>−174</td><td>−3.8%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Source: sportsbookreview.com odds tables, pulled 14 Oct 2026 at about 18:40 UTC, before all three games (page data carries no timestamp). Books clustered within 1 point of each other, average vig 4.3% to 4.5%. Lines move, so re-check before betting.</p>
   </section>
 
   <section class="premise">
@@ -74,11 +85,11 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
   <section class="calc" aria-labelledby="c">
     <h2 id="c">Check any bet</h2>
-    <p class="note">Enter the sharp book's American odds for both sides, then the best price you can get on the side you want. Prefilled with the example above, not a recommendation.</p>
+    <p class="note">Enter the sharp book's American odds for both sides, then the best price you can get on the side you want. Prefilled with Stars from the table above (one book's pair, best price +118), not a recommendation.</p>
     <div class="grid">
-      <label for="a">Sharp odds, side A<input id="a" value="-161"></label>
-      <label for="b">Sharp odds, side B (your side)<input id="b" value="132"></label>
-      <label for="p">Best price on side B<input id="p" value="132"></label>
+      <label for="a">Sharp odds, side A<input id="a" value="-135"></label>
+      <label for="b">Sharp odds, side B (your side)<input id="b" value="114"></label>
+      <label for="p">Best price on side B<input id="p" value="118"></label>
       <label for="k">Bankroll ($)<input id="k" inputmode="decimal" value="1000"></label>
     </div>
     <div class="out">
