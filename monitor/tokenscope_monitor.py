@@ -21,6 +21,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 
 HOME = os.path.expanduser("~")
 KNOWN_BINS = [
@@ -35,6 +36,14 @@ def env_float(name, default):
         return float(os.environ.get(name, default))
     except ValueError:
         return float(default)
+
+
+def window_seconds(spec):
+    units = {"m": 60, "h": 3600, "d": 86400, "w": 604800}
+    try:
+        return int(spec[:-1]) * units[spec[-1]]
+    except (ValueError, KeyError, IndexError):
+        return 5 * 3600
 
 
 def find_cmd():
@@ -81,8 +90,9 @@ class Monitor:
             self.log(f"ERROR running tokenscope {argv[0]}: {exc}")
             return None
         if proc.returncode != 0:
-            tail = (proc.stderr or proc.stdout).strip().splitlines()[-1:] or ["no output"]
-            self.log(f"ERROR tokenscope {argv[0]} exited {proc.returncode}: {tail[0]}")
+            tail = ((proc.stderr or proc.stdout).strip().splitlines()[-1:] or ["no output"])[0]
+            level = "INFO" if "no sessions found" in tail else "ERROR"  # normal after a quiet period
+            self.log(f"{level} tokenscope {argv[0]} exited {proc.returncode}: {tail}")
             return None
         if not as_json:
             return True
@@ -105,14 +115,16 @@ class Monitor:
             json.dump(state, fh, indent=1)
         os.replace(tmp, self.state_path)
 
-    def notify(self, title, body):
+    def notify(self, title, body, desktop=True):
         self.alerts.append(f"{title}: {body}")
         self.log(f"ALERT {title}: {body}")
-        if not self.notify_enabled:
+        if not (desktop and self.notify_enabled):
             return
         try:
             if platform.system() == "Darwin":
-                script = "display notification {} with title {}".format(json.dumps(body), json.dumps(title))
+                # ensure_ascii=False: AppleScript strings do not understand \uXXXX escapes
+                script = "display notification {} with title {}".format(
+                    json.dumps(body, ensure_ascii=False), json.dumps(title, ensure_ascii=False))
                 subprocess.run(["osascript", "-e", script], timeout=10, check=False)
             elif shutil.which("notify-send"):
                 subprocess.run(["notify-send", title, body], timeout=10, check=False)
@@ -130,9 +142,19 @@ class Monitor:
         self.log(f"DIGEST window={self.window} sessions={total.get('sessions', 0)} "
                  f"calls={total.get('calls', 0)} cw={cw:,.0f} usd={usd:.2f} top_session={biggest!r}")
         if usd > self.max_usd:
-            self.notify("tokenscope: spend", f"${usd:.2f} in last {self.window} (limit ${self.max_usd:g}). Top: {biggest}")
+            msg = f"${usd:.2f} in last {self.window} (limit ${self.max_usd:g}). Top: {biggest}"
         elif cw > self.max_cw:
-            self.notify("tokenscope: spend", f"{cw:,.0f} CW in last {self.window} (limit {self.max_cw:,.0f}). Top: {biggest}")
+            msg = f"{cw:,.0f} CW in last {self.window} (limit {self.max_cw:,.0f}). Top: {biggest}"
+        else:
+            return
+        # one alert per window, so an hourly schedule does not repeat a single spike
+        state = self.load_state()
+        if time.time() - state.get("last_spend_alert", 0) < window_seconds(self.window):
+            self.log(f"INFO spend still over limit, alert already sent this window: {msg}")
+            return
+        self.notify("tokenscope: spend", msg)
+        state["last_spend_alert"] = time.time()
+        self.save_state(state)
 
     def check_fixes(self):
         fixes = self.run("fixes", "--since", self.since, "--root", self.root, "--json", as_json=True)
@@ -142,8 +164,11 @@ class Monitor:
         seen = set(state.get("seen_fixes", []))
         new = [f for f in fixes if f.get("id") not in seen]
         self.log(f"DIGEST fixes total={len(fixes)} new={len(new)}")
-        for fix in new:
-            self.notify(f"tokenscope fix [{fix.get('severity', '?')}]", fix.get("title", fix.get("id", "")))
+        for fix in new:  # details go to the log; the desktop gets one summary per run
+            self.notify(f"tokenscope fix [{fix.get('severity', '?')}]", fix.get("title", fix.get("id", "")), desktop=False)
+        if new:
+            first = new[0].get("title", new[0].get("id", ""))
+            self.notify("tokenscope: new fixes", f"{len(new)} new, e.g. {first}. See monitor.log and the latest report.")
         state["seen_fixes"] = sorted(seen | {f["id"] for f in fixes if "id" in f})
         self.save_state(state)
 
