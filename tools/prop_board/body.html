@@ -1,0 +1,40 @@
+<div class="wrap">
+  <header>
+    <h1>Prop Board</h1>
+    <p class="stamp" id="stamp"></p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tab-player" aria-selected="true" aria-controls="panel-player">Player</button>
+    <button type="button" role="tab" id="tab-board" aria-selected="false" aria-controls="panel-board">Trend board</button>
+  </div>
+
+  <section class="panel" id="panel-player" role="tabpanel" aria-labelledby="tab-player">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="controls">
+        <div class="field"><label for="q">Player</label><input id="q" list="players" autocomplete="off" placeholder="Type a name"><datalist id="players"></datalist></div>
+        <div class="field"><label for="stat">Prop</label><select id="stat"></select></div>
+        <div class="field"><label for="line">Book line</label><input id="line" inputmode="decimal" placeholder="e.g. 64.5"></div>
+        <div class="field"><label for="win">Games</label>
+          <select id="win"><option value="l5">Last 5</option><option value="l10" selected>Last 10</option><option value="y26">2026 season</option><option value="y25">2025 season</option></select></div>
+      </div>
+      <div class="card" id="pcard"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-board" role="tabpanel" aria-labelledby="tab-board" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="filters">
+        <div class="field"><label for="bpos">Position</label><select id="bpos"><option value="">All</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option></select></div>
+        <div class="field"><label for="bmet">Usage stat</label><select id="bmet"></select></div>
+        <div class="field"><label for="bdir">Show</label><select id="bdir"><option value="up">Rising usage</option><option value="down">Falling usage</option></select></div>
+        <div class="field"><label for="bmin">Min 2026 games</label><select id="bmin"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+        <div class="field" style="justify-content:end"><label for="bplay" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)"><input type="checkbox" id="bplay" checked style="width:auto"> Playing in week <span id="bwk"></span></label></div>
+      </div>
+      <p class="note" id="bnote"></p>
+      <div class="scroll"><table id="btable"></table></div>
+    </div>
+  </section>
+
+  <p class="note">Game logs come from nflverse weekly player stats. A game shows up only if the player recorded a stat that week, so players with small roles can look slightly better against the line than they are. Lines, odds and injuries are not in this data: type the line from your book and check injury news yourself. Past hit rates do not predict outcomes, and books already price in obvious trends.</p>
+</div>
