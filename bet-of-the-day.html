@@ -40,65 +40,90 @@ table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font
 th,td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
+.pill.mid{color:var(--warn)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:14px;margin:4px 0}
+.kv div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kv b{font:500 20px var(--mono);font-variant-numeric:tabular-nums}
+.kv span{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
 .rg{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wed 14 Oct 2026 · NHL slate + Dodgers–Brewers NLCS Game 3</div>
+    <div class="eyebrow">Wed 14 Oct 2026 · NHL only</div>
     <h1>Bet of the Day</h1>
   </header>
 
   <section class="verdict" aria-labelledby="v">
-    <span class="pill stop">No bet today</span>
-    <div class="big" id="v">Every moneyline tonight is negative EV at its best price.</div>
-    <p>Pros pass on most days. I compared eight US books on each game and removed the vig from each book, then averaged. No Pinnacle or Circa line was available, so this anchor is weaker than a sharp book. Even so, the best price on every side is 2% to 4% below fair, so nothing qualifies.</p>
-    <div class="tw"><table>
-      <thead><tr><th>Game</th><th>Fair win %</th><th>Best price</th><th>EV</th></tr></thead>
-      <tbody>
-        <tr><td>MTL @ WSH</td><td>MTL 47.6</td><td>+105</td><td>−2.3%</td></tr>
-        <tr><td></td><td>WSH 52.4</td><td>−115</td><td>−2.1%</td></tr>
-        <tr><td>DAL @ COL</td><td>DAL 44.4</td><td>+118</td><td>−3.3%</td></tr>
-        <tr><td></td><td>COL 55.6</td><td>−135</td><td>−3.2%</td></tr>
-        <tr><td>MIL @ LAD</td><td>MIL 38.9</td><td>+150</td><td>−2.7%</td></tr>
-        <tr><td></td><td>LAD 61.1</td><td>−174</td><td>−3.8%</td></tr>
-      </tbody>
-    </table></div>
-    <p class="note">Source: sportsbookreview.com odds tables, pulled 14 Oct 2026 at about 18:40 UTC, before all three games (page data carries no timestamp). Books clustered within 1 point of each other, average vig 4.3% to 4.5%. Lines move, so re-check before betting.</p>
-  </section>
-
-  <section class="premise">
-    <h2>No method makes betting reliable</h2>
-    <p>Sportsbooks build a margin into every price and the sharpest ones are right far more often than any model you or I can build. The goal is small, repeatable, positive expected value, sized so a losing streak cannot end the bankroll. A bet of the day is a candidate with a measured edge, never a promise of a win.</p>
+    <span class="pill mid">Model pick</span>
+    <div class="big" id="v">Colorado Avalanche moneyline, −135 at DraftKings.</div>
+    <div class="kv">
+      <div><b>59.6%</b><span>Model win %</span></div>
+      <div><b>55.6%</b><span>Market win %</span></div>
+      <div><b>+3.7%</b><span>EV on model</span></div>
+      <div><b>0.62%</b><span>Stake, bankroll</span></div>
+    </div>
+    <p>My own team ratings give Colorado a bigger edge over Dallas than the books price in. This is a model pick, sized at one-eighth Kelly. The blended price (70% market, 30% model) shows −1.1% EV, so it is not a Strong bet. Puck drops 8:30 pm ET. <b>Confirm both starting goalies before betting.</b> The ratings do not know who is in net.</p>
+    <p class="note">Prices pulled 14 Oct 2026 at about 18:50 UTC from eight US books. Lines move, so re-check before betting.</p>
   </section>
 
   <section>
-    <h2>How the pick is made</h2>
+    <h2>Tonight's board</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Side</th><th>Model %</th><th>Best price</th><th>EV (model)</th><th>EV (blend)</th></tr></thead>
+      <tbody>
+        <tr><td>COL</td><td>59.6</td><td>−135</td><td>+3.7%</td><td>−1.1%</td></tr>
+        <tr><td>DAL</td><td>40.4</td><td>+118</td><td>−11.9%</td><td>−5.9%</td></tr>
+        <tr><td>WSH</td><td>54.3</td><td>−115</td><td>+1.5%</td><td>−1.0%</td></tr>
+        <tr><td>MTL</td><td>45.7</td><td>+105</td><td>−6.3%</td><td>−3.5%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Dodgers–Brewers is not modeled. Only NHL has a rating model here.</p>
+  </section>
+
+  <section class="premise">
+    <h2>How the call is made</h2>
+    <p>Waiting for a book to misprice a line is one way to find value. This page also makes its own number. It rates every NHL team from game results since October 2024, with an Elo model that credits margin of victory, home ice and a pull back toward average each new season. It then compares its win probability to the eight-book market consensus.</p>
     <ol>
-      <li><b>Fair price.</b> Take a sharp market (Pinnacle, Circa, Bookmaker). Remove the vig by dividing each implied probability by their sum.</li>
-      <li><b>Line shop.</b> Compare that fair probability to the best price across soft books.</li>
-      <li><b>Edge.</b> Bet only if EV is at least 2%.</li>
-      <li><b>Stake.</b> Quarter Kelly, capped at 2% of bankroll.</li>
-      <li><b>Prove it.</b> Track closing line value. If your bets beat the closing price over hundreds of wagers, the process works, whatever the short-term record says.</li>
+      <li><b>Strong bet.</b> Blended EV of 2% or more. Quarter Kelly, capped at 2% of bankroll.</li>
+      <li><b>Model pick.</b> Model-only EV of 3% or more. One-eighth Kelly, capped at 1%.</li>
+      <li><b>No call.</b> Neither clears.</li>
     </ol>
+    <p>The model scores a log loss of 0.680 over 2,897 games, against 0.690 for always picking the home rate. The settings were tuned on the same games, so the true figure is slightly worse. It beats a naive baseline. It has not been shown to beat the market, and the ledger below is how that gets tested. The model's weight in the blend only goes up if the record earns it.</p>
+  </section>
+
+  <section class="verdict" aria-labelledby="l">
+    <h2 id="l">Ledger</h2>
+    <div class="kv">
+      <div><b id="lg-n">0</b><span>Graded picks</span></div>
+      <div><b id="lg-wl">0–0</b><span>Record</span></div>
+      <div><b id="lg-pl">0.00%</b><span>Bankroll P&amp;L</span></div>
+      <div><b id="lg-open">0</b><span>Open</span></div>
+    </div>
+    <div class="tw"><table id="lg-table">
+      <thead><tr><th>Date</th><th>Pick</th><th>Tier</th><th>Price</th><th>Stake</th><th>Result</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="note">Every Strong bet and Model pick is logged here at the price shown, then graded from final scores. A short record says little. Judge the model over hundreds of picks.</p>
   </section>
 
   <section class="calc" aria-labelledby="c">
     <h2 id="c">Check any bet</h2>
-    <p class="note">Enter the sharp book's American odds for both sides, then the best price you can get on the side you want. Prefilled with Stars from the table above (one book's pair, best price +118), not a recommendation.</p>
+    <p class="note">Enter both sides' American odds from one book, then the best price on your side. Add your own win % to price a model pick. Prefilled with tonight's Colorado pick: DraftKings Dallas +114 and Colorado −135, best price −135, model 59.6%.</p>
     <div class="grid">
-      <label for="a">Sharp odds, side A<input id="a" value="-135"></label>
-      <label for="b">Sharp odds, side B (your side)<input id="b" value="114"></label>
-      <label for="p">Best price on side B<input id="p" value="118"></label>
+      <label for="a">Other side, odds<input id="a" value="114"></label>
+      <label for="b">Your side, odds<input id="b" value="-135"></label>
+      <label for="p">Best price on your side<input id="p" value="-135"></label>
+      <label for="m">Your win % (optional)<input id="m" value="59.6"></label>
       <label for="k">Bankroll ($)<input id="k" inputmode="decimal" value="1000"></label>
     </div>
     <div class="out">
       <span class="pill stop" id="pill">No bet</span>
       <dl style="margin-top:12px">
-        <dt>Fair win %</dt><dd id="fair">–</dd>
+        <dt>Win % used</dt><dd id="fair">–</dd>
         <dt>Vig (overround)</dt><dd id="hold">–</dd>
         <dt>EV per $1</dt><dd id="ev">–</dd>
-        <dt>¼ Kelly stake</dt><dd id="stake">–</dd>
+        <dt>Stake</dt><dd id="stake">–</dd>
       </dl>
     </div>
   </section>
@@ -106,29 +131,43 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
   <p class="rg">Only stake money you can afford to lose. If gambling stops being fun, call 1-800-GAMBLER (US) for free, confidential help. This page is analysis, not financial advice, and odds change by the minute.</p>
 </div>
 
+<script type="application/json" id="ledger">[{"date":"2026-10-14","pick":"COL ML","tier":"Model pick","price":-135,"stake":0.62,"result":null}]</script>
 <script>
 (function(){
   var $=function(i){return document.getElementById(i)};
   function imp(o){return o<0?-o/(-o+100):100/(o+100)}
   function dec(o){return o<0?1+100/-o:1+o/100}
   function run(){
-    var a=+$('a').value,b=+$('b').value,p=+$('p').value,k=+$('k').value;
+    var a=+$('a').value,b=+$('b').value,p=+$('p').value,k=+$('k').value,m=+$('m').value;
     var ok=[a,b,p].every(function(x){return isFinite(x)&&Math.abs(x)>=100});
     if(!ok){$('pill').textContent='Check inputs';$('pill').className='pill stop';
       ['fair','hold','ev','stake'].forEach(function(i){$(i).textContent='–'});return}
-    var ia=imp(a),ib=imp(b),s=ia+ib,fair=ib/s,d=dec(p);
+    var ia=imp(a),ib=imp(b),s=ia+ib,mine=$('m').value.trim()!==''&&isFinite(m)&&m>0&&m<100;
+    var fair=mine?m/100:ib/s,d=dec(p);
     var ev=fair*(d-1)-(1-fair);
     var kelly=ev>0?ev/(d-1):0;
-    var frac=Math.min(kelly/4,0.02);
-    var go=ev>=0.02;
-    $('fair').textContent=(fair*100).toFixed(1)+'%';
+    var frac=mine?Math.min(kelly/8,0.01):Math.min(kelly/4,0.02);
+    var go=ev>=(mine?0.03:0.02);
+    $('fair').textContent=(fair*100).toFixed(1)+'%'+(mine?' (yours)':' (no-vig)');
     $('hold').textContent=((s-1)*100).toFixed(1)+'%';
     $('ev').textContent=(ev>=0?'+':'')+(ev*100).toFixed(1)+'%';
     $('stake').textContent=go?(frac*100).toFixed(2)+'% ($'+(frac*(isFinite(k)?k:0)).toFixed(2)+')':'0%';
-    $('pill').textContent=go?'Bet':'No bet';
-    $('pill').className='pill '+(go?'go':'stop');
+    $('pill').textContent=go?(mine?'Model pick':'Bet'):'No bet';
+    $('pill').className='pill '+(go?(mine?'mid':'go'):'stop');
   }
-  ['a','b','p','k'].forEach(function(i){$(i).addEventListener('input',run)});
+  ['a','b','p','m','k'].forEach(function(i){$(i).addEventListener('input',run)});
   run();
+  try{
+    var L=JSON.parse($('ledger').textContent),w=0,l=0,pl=0,open=0,tb=document.querySelector('#lg-table tbody');
+    L.forEach(function(r){
+      var res=r.result==='W'?'Won':r.result==='L'?'Lost':'Open';
+      if(r.result==='W'){w++;pl+=r.stake*(dec(r.price)-1)}else if(r.result==='L'){l++;pl-=r.stake}else open++;
+      var tr=document.createElement('tr');
+      [r.date,r.pick,r.tier,(r.price>0?'+':'\u2212')+Math.abs(r.price),r.stake.toFixed(2)+'%',res].forEach(function(t,i){
+        var td=document.createElement('td');td.textContent=t;tr.appendChild(td)});
+      tb.appendChild(tr)});
+    $('lg-n').textContent=w+l;$('lg-wl').textContent=w+'\u2013'+l;
+    $('lg-pl').textContent=(pl>=0?'+':'\u2212')+Math.abs(pl).toFixed(2)+'%';$('lg-open').textContent=open;
+  }catch(e){}
 })();
 </script>
