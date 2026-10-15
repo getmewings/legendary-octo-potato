@@ -237,3 +237,82 @@ def test_core_sector_tilt_splits_deposits_and_never_sells():
     # Buy-only: every traded dollar is a deposit dollar. Any sale would push this above contributed.
     assert r.traded_notional == pytest.approx(r.contributed, rel=1e-6)
     assert r.cost_paid > 0
+
+
+# ---- review -------------------------------------------------------------
+
+def _journal(rows, tmp_path):
+    from hub.review import load_trades
+
+    path = tmp_path / "trades.csv"
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return load_trades(path)
+
+
+def test_review_cash_flows_and_holdings(tmp_path):
+    from hub.review import cash_flows, holdings
+
+    t = _journal(
+        [
+            {"date": "2026-01-02", "ticker": "vti", "side": "buy", "shares": 0.1, "price": 200.0, "fees": 0.0},
+            {"date": "2026-01-16", "ticker": "VTI", "side": "buy", "shares": 0.1, "price": 210.0, "fees": 0.0},
+            {"date": "2026-02-02", "ticker": "VTI", "side": "sell", "shares": 0.05, "price": 220.0, "fees": 0.01},
+        ],
+        tmp_path,
+    )
+    flows = cash_flows(t)
+    assert list(flows.round(2)) == [20.0, 21.0, -10.99]
+    assert holdings(t) == {"VTI": pytest.approx(0.15)}
+
+
+def test_review_benchmark_matches_own_trades_when_same_ticker(tmp_path):
+    from hub.review import benchmark_shares, cash_flows
+
+    t = _journal(
+        [
+            {"date": "2026-01-05", "ticker": "SPY", "side": "buy", "shares": 0.2, "price": 100.0},
+            {"date": "2026-01-19", "ticker": "SPY", "side": "buy", "shares": 0.1, "price": 100.0},
+        ],
+        tmp_path,
+    )
+    idx = pd.bdate_range("2026-01-01", periods=40)
+    spy_open = pd.Series(100.0, index=idx)
+    assert benchmark_shares(cash_flows(t), spy_open) == pytest.approx(0.3)
+
+
+def test_review_benchmark_uses_next_trading_day_for_weekend_trade(tmp_path):
+    from hub.review import benchmark_shares, cash_flows
+
+    t = _journal([{"date": "2026-01-03", "ticker": "SPY", "side": "buy", "shares": 1.0, "price": 100.0}], tmp_path)  # Saturday
+    idx = pd.bdate_range("2026-01-01", periods=10)
+    spy_open = pd.Series(np.arange(100.0, 110.0), index=idx)
+    # Saturday 1/3 -> Monday 1/5, which is index position 2 -> open 102.
+    assert benchmark_shares(cash_flows(t), spy_open) == pytest.approx(100.0 / 102.0)
+
+
+def test_review_deposit_gaps(tmp_path):
+    from hub.review import deposit_gaps
+
+    rows = [{"date": d, "ticker": "VTI", "side": "buy", "shares": 0.1, "price": 100.0}
+            for d in ["2026-01-02", "2026-01-16", "2026-01-30", "2026-03-13"]]
+    gaps = deposit_gaps(_journal(rows, tmp_path))
+    assert [g for _, g in gaps] == [42]
+
+
+def test_review_rejects_bad_side(tmp_path):
+    with pytest.raises(ValueError):
+        _journal([{"date": "2026-01-02", "ticker": "VTI", "side": "hold", "shares": 1, "price": 1}], tmp_path)
+
+
+def test_review_empty_journal_header_only(tmp_path):
+    from hub.review import load_trades
+
+    path = tmp_path / "trades.csv"
+    path.write_text("date,ticker,side,shares,price,sleeve,reason,invalidation,review_date,fees\n")
+    assert load_trades(path).empty
+
+
+def test_xirr_handles_withdrawals():
+    flows = pd.Series([100.0, -50.0], index=pd.to_datetime(["2020-01-01", "2020-07-01"]))
+    r = xirr(flows, 60.0, pd.Timestamp("2021-01-01"))
+    assert 0.0 < r < 1.0

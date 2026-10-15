@@ -68,6 +68,7 @@ Everything is compared to buying SPY (or VTI) with the same deposits on the same
 ## Review cadence
 
 - Every deposit: place the order, log it.
+- Monthly: run `python -m hub.review` to compare the journal to the same cash in SPY and check for missed deposits.
 - Quarterly: compare actual results to the benchmark, check any discretionary position against its invalidation level.
 - Annually: revisit this document. Rule changes are made here, with the reason, and not after a bad week.
 

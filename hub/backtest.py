@@ -59,7 +59,11 @@ class Result:
 
 
 def xirr(deposits: pd.Series, ending_value: float, end_date: pd.Timestamp) -> float:
-    """Money-weighted annual return for dated deposits plus a final value."""
+    """Money-weighted annual return for dated deposits plus a final value.
+
+    ``deposits`` is signed: positive adds money, negative is a withdrawal.
+    Dates must be in ascending order.
+    """
     if deposits.empty or ending_value <= 0:
         return float("nan")
     t_dep = np.array([(d - deposits.index[0]).days / 365.0 for d in deposits.index])
