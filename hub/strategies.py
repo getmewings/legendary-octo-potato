@@ -64,6 +64,29 @@ def momentum_ranking(history: pd.DataFrame, lookback: int = 252, skip: int = 21)
     return ret.sort_values(ascending=False, kind="stable")
 
 
+def satellite_picks(
+    closes: pd.DataFrame,
+    universe: list[str] | None = None,
+    top_n: int = 3,
+    as_of: pd.Timestamp | None = None,
+    lookback: int = 252,
+    skip: int = 21,
+) -> list[str]:
+    """Sector picks in force on ``as_of`` (default: last bar).
+
+    Picks are made once per month from the close of that month's first trading
+    day, exactly as ``SectorMomentum`` does, so a mid-month call returns the
+    same picks as the month's first bar.
+    """
+    universe = list(universe or SECTOR_ETFS)
+    closes = closes if as_of is None else closes.loc[:as_of]
+    last = closes.index[-1]
+    in_month = (closes.index.year == last.year) & (closes.index.month == last.month)
+    first_pos = int(in_month.argmax())
+    ranking = momentum_ranking(closes[universe].iloc[: first_pos + 1], lookback, skip)
+    return list(ranking.index[:top_n])
+
+
 class SectorMomentum:
     """Equal-weight the top-N sector ETFs by 12-1 momentum, rebalanced monthly.
 

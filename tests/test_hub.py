@@ -5,7 +5,7 @@ import pytest
 from hub.backtest import run_backtest, xirr
 from hub.data import Prices
 from hub.sizing import plan_buys, position_size
-from hub.strategies import BuyAndHold, SectorMomentum, TrendFilter, momentum_ranking
+from hub.strategies import BuyAndHold, SectorMomentum, TrendFilter, momentum_ranking, satellite_picks
 
 
 def make_prices(open_, close=None, start="2020-01-01"):
@@ -156,6 +156,27 @@ def test_momentum_ranking_skips_recent_month():
     hist = pd.DataFrame({"A": a, "B": b})
     ranking = momentum_ranking(hist)
     assert ranking.index[0] == "A"
+
+
+def test_satellite_picks_are_anchored_to_first_bar_of_month():
+    rng = np.random.default_rng(0)
+    idx = pd.bdate_range("2019-01-01", periods=500)
+    names = ["A", "B", "C", "D", "E", "F"]
+    closes = pd.DataFrame(
+        100 * np.exp(np.cumsum(rng.normal(0.0003, 0.012, (500, 6)), axis=0)), index=idx, columns=names
+    )
+    month = idx[-1]
+    in_month = [d for d in idx if (d.year, d.month) == (month.year, month.month)]
+    anchor = satellite_picks(closes, names, 3, as_of=in_month[0])
+    assert len(in_month) > 5
+    for d in in_month:
+        assert satellite_picks(closes, names, 3, as_of=d) == anchor
+    assert satellite_picks(closes, names, 3) == anchor
+    # and it matches what the strategy itself decides on that first bar
+    s = SectorMomentum(universe=names, top_n=3)
+    first_pos = idx.get_loc(in_month[0])
+    decided = s.decide(closes.iloc[: first_pos + 1], None)
+    assert set(decided) == set(anchor)
 
 
 def test_sector_momentum_only_rebalances_on_first_bar_of_month():

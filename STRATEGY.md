@@ -21,6 +21,8 @@ Grow a portfolio from zero over a long horizon using small recurring deposits. A
 | Systematic satellite | 30% | Top-3 sector ETFs by 12-1 momentum, equal weight | Rebalance monthly, rules in `hub/strategies.py` |
 | Discretionary | 10% | Individual stocks we research | Journaled thesis required, see below |
 
+While the discretionary sleeve has no position backed by a thesis, its 10% is invested in the core (`hub.plan` does this automatically), so no cash sits idle. To open a discretionary position, fund it from a deposit or by trimming core at the annual rebalance.
+
 High risk tolerance is expressed through the satellite and discretionary sleeves (40% in total), not through leverage.
 
 ## Hard limits
