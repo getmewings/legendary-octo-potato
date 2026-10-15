@@ -11,6 +11,17 @@ No future data is ever used for a game. The pitcher weight c (Elo per run) is tu
 on seasons before the last full season, and scored out of sample on that season
 against the same model with c = 0, so the pitcher term has to earn its place.
 
+Playoff pitcher handling (October):
+  * postseason games (F, D, L, W) update ratings and pitcher records but are never used to tune
+  * starters work fewer innings and bullpens matter more, so the pitcher term is scaled by
+    POST_SCALE (0.8) in postseason games. This is an assumption: there are too few playoff games
+    to fit it (the script prints the playoff log loss at several scales for reference)
+  * a probable pitcher with fewer than 6 weighted prior starts (a reliever, opener or bullpen
+    game) -> no call
+  * a starter who pitches 4 days or fewer after his last start (a normal turn is 5) -> no call
+  * a postseason probable who is a reliever or on short rest can swing a price by itself, so
+    these two guards apply to every game but matter most in October
+
 Guards:
   * both probable pitchers must be listed, else no call (PENDING)
   * a call is void if a named pitcher does not start
@@ -27,6 +38,9 @@ NOW = dt.datetime.now(dt.timezone.utc)
 YEAR = NOW.year
 FIRST = YEAR - 4
 PRIOR_STARTS = 12
+POST_SCALE = 0.8
+MIN_STARTS = 6
+SHORT_REST_DAYS = 4
 DISAGREE_CAP = 0.08
 BAND = (-300, 300)
 imp = lambda o: -o / (-o + 100) if o < 0 else 100 / (o + 100)
@@ -69,7 +83,7 @@ if "--finals" in sys.argv:
 def fetch_games():
     jobs = []
     for y in range(FIRST, YEAR + 1):
-        for m in range(3, 11):
+        for m in range(3, 12):
             a = dt.date(y, m, 1)
             b = (dt.date(y + (m == 12), m % 12 + 1, 1) - dt.timedelta(days=1))
             jobs.append((a, b))
@@ -79,18 +93,18 @@ def fetch_games():
     for d in res:
         for dd in (d or {}).get("dates", []):
             for g in dd["games"]:
-                if g["gameType"] != "R" or g["status"]["abstractGameState"] != "Final":
+                if g["gameType"] not in ("R", "F", "D", "L", "W") or g["status"]["abstractGameState"] != "Final":
                     continue
                 a, h = g["teams"]["away"], g["teams"]["home"]
                 if a.get("score") is None or h.get("score") is None:
                     continue
-                games[g["gamePk"]] = dict(pk=g["gamePk"], t=g["gameDate"], y=int(g["season"]), a=canon(a["team"]["name"]), h=canon(h["team"]["name"]),
+                games[g["gamePk"]] = dict(pk=g["gamePk"], gt=g["gameType"], t=g["gameDate"], y=int(g["season"]), a=canon(a["team"]["name"]), h=canon(h["team"]["name"]),
                                           sa=a["score"], sh=h["score"], pa=pp(a)[0], ph=pp(h)[0])
     return sorted(games.values(), key=lambda g: (g["t"], g["pk"]))
 
-def run(games, K, HA, carry, c, score_from=None):
+def run(games, K, HA, carry, c, score_from=None, post_scale=POST_SCALE, only_post=False):
     """Walk forward. Returns ratings, pitcher state, log loss on y >= score_from."""
-    R, P, season, ll, n = {}, {}, None, 0.0, 0
+    R, P, LS, season, ll, n = {}, {}, {}, None, 0.0, 0
     lg_sum, lg_n = 4.5 * 50, 50.0  # running league runs-per-team-game, seeded
     for g in games:
         if season is not None and g["y"] != season:
@@ -105,23 +119,24 @@ def run(games, K, HA, carry, c, score_from=None):
                 return 0.0
             s_, n_ = P.get(pid, (0.0, 0.0))
             ra = (s_ + PRIOR_STARTS * lg) / (n_ + PRIOR_STARTS)
-            return c * (lg - ra)
+            return c * (lg - ra) * (1.0 if g["gt"] == "R" else post_scale)
         ra_, rh_ = R.get(g["a"], 1500.0), R.get(g["h"], 1500.0)
         diff = rh_ + HA + padj(g["ph"]) - (ra_ + padj(g["pa"]))
         ph = 1 / (1 + 10 ** (-diff / 400))
         y = 1.0 if g["sh"] > g["sa"] else 0.0
-        if score_from and g["y"] >= score_from:
+        if score_from and g["y"] >= score_from and ((g["gt"] != "R") if only_post else (g["gt"] == "R")):
             ll -= y * math.log(ph) + (1 - y) * math.log(1 - ph)
             n += 1
         d = K * (1 + math.log(abs(g["sh"] - g["sa"]) + 1) * 0.5) * (y - ph)
         R[g["h"]], R[g["a"]] = rh_ + d, ra_ - d
         # pitcher state updated after the game: runs his opponent scored
+        gd = dt.datetime.fromisoformat(g["t"].replace("Z", "+00:00")).astimezone(ET).date()
         if g["ph"]:
-            s_, n_ = P.get(g["ph"], (0.0, 0.0)); P[g["ph"]] = (s_ + g["sa"], n_ + 1)
+            s_, n_ = P.get(g["ph"], (0.0, 0.0)); P[g["ph"]] = (s_ + g["sa"], n_ + 1); LS[g["ph"]] = gd
         if g["pa"]:
-            s_, n_ = P.get(g["pa"], (0.0, 0.0)); P[g["pa"]] = (s_ + g["sh"], n_ + 1)
+            s_, n_ = P.get(g["pa"], (0.0, 0.0)); P[g["pa"]] = (s_ + g["sh"], n_ + 1); LS[g["pa"]] = gd
         lg_sum += g["sa"] + g["sh"]; lg_n += 2
-    return R, P, (lg_sum / lg_n), (ll / n if n else None), n
+    return R, P, (lg_sum / lg_n), (ll / n if n else None), n, LS
 
 def consensus():
     h = subprocess.run(["curl", "-sS", "-m", "30", "-A", "Mozilla/5.0",
@@ -144,21 +159,27 @@ if FETCH_FAILURES:
     print("CALLS_JSON []"); sys.exit(1)
 per = {}
 for g in games:
-    per[g["y"]] = per.get(g["y"], 0) + 1
+    if g["gt"] == "R":
+        per[g["y"]] = per.get(g["y"], 0) + 1
 miss = sum(1 for g in games if not g["pa"] or not g["ph"]) / max(1, len(games))
-print(f"mlb: {len(games)} regular-season games {FIRST}-{YEAR}, per season {per}, missing starter {miss:.1%}")
+print(f"mlb: {sum(per.values())} regular-season + {sum(1 for g in games if g['gt'] != 'R')} postseason games {FIRST}-{YEAR}, regular season per year {per}, missing starter {miss:.1%}")
 last_full = YEAR - 1
-tune = [g for g in games if g["y"] < last_full]
+reg = [g for g in games if g["gt"] == "R"]
+tune = [g for g in reg if g["y"] < last_full]
 best = min(((run(tune, K, HA, ca, c, score_from=FIRST + 1)[3], K, HA, ca, c)
             for K, HA, ca, c in product((3, 5, 8), (15, 25, 35), (0.5, 0.7, 0.9), (0, 15, 30, 45, 60))))
 _, K, HA, carry, c = best
-ll_c = run([g for g in games if g["y"] <= last_full], K, HA, carry, c, score_from=last_full)
-ll_0 = run([g for g in games if g["y"] <= last_full], K, HA, carry, 0, score_from=last_full)
-hr = sum(1 for g in games if g["y"] == last_full and g["sh"] > g["sa"]) / max(1, per.get(last_full, 1))
+ll_c = run([g for g in reg if g["y"] <= last_full], K, HA, carry, c, score_from=last_full)
+ll_0 = run([g for g in reg if g["y"] <= last_full], K, HA, carry, 0, score_from=last_full)
+# reference only: playoff log loss at several pitcher scales, all postseasons up to last_full
+pg = [g for g in games if g["y"] <= last_full]
+post = {sc: run(pg, K, HA, carry, c, score_from=FIRST + 1, post_scale=sc, only_post=True) for sc in (0.0, 0.5, 0.8, 1.0)}
+hr = sum(1 for g in reg if g["y"] == last_full and g["sh"] > g["sa"]) / max(1, per.get(last_full, 1))
 base = -(hr * math.log(hr) + (1 - hr) * math.log(1 - hr))
 print(f"Elo K={K} HA={HA} carry={carry} pitcher c={c} Elo/run, tuned before {last_full}")
 print(f"FIT mlb out-of-sample {last_full}: logloss {ll_c[3]:.4f} over {ll_c[4]} games; without pitcher term {ll_0[3]:.4f}; home-rate baseline {base:.4f}")
-R, P, lg, _, _ = run(games, K, HA, carry, c)
+print("PLAYOFF reference (pitcher scale: logloss over %d games): " % post[0.8][4] + ", ".join(f"{sc}: {v[3]:.4f}" for sc, v in post.items()) + "  (too few games to tune; 0.8 is an assumption)")
+R, P, lg, _, _, LS = run(games, K, HA, carry, c)
 
 # today's slate (ET) with probable pitchers
 today_et = NOW.astimezone(ET).date()
@@ -189,16 +210,29 @@ for away, home, start, rows in market:
         print(f"{away} @ {home}  UNRATED"); continue
     pa_id, pa_n = pp(g["teams"]["away"]); ph_id, ph_n = pp(g["teams"]["home"])
     pending = not pa_id or not ph_id
+    scale = 1.0 if g["gameType"] == "R" else POST_SCALE
     def padj(pid):
         if not pid: return 0.0
-        s_, n_ = P.get(pid, (0.0, 0.0)); return c * (lg - (s_ + PRIOR_STARTS * lg) / (n_ + PRIOR_STARTS))
+        s_, n_ = P.get(pid, (0.0, 0.0)); return scale * c * (lg - (s_ + PRIOR_STARTS * lg) / (n_ + PRIOR_STARTS))
+    notes = []
+    for who, pid, pn in (("away", pa_id, pa_n), ("home", ph_id, ph_n)):
+        if not pid:
+            continue
+        n_ = P.get(pid, (0.0, 0.0))[1]
+        if n_ < MIN_STARTS:
+            notes.append(f"{pn} has only {n_:.0f} weighted prior starts (reliever/opener?)")
+        ls = LS.get(pid)
+        if ls and (t.astimezone(ET).date() - ls).days <= SHORT_REST_DAYS:
+            notes.append(f"{pn} starts only {(t.astimezone(ET).date() - ls).days} days after his last start")
     pm_h = 1 / (1 + 10 ** (-((R[ch] + HA + padj(ph_id)) - (R[ca] + padj(pa_id))) / 400))
     mk_h = 1 - st.mean(imp(x) / (imp(x) + imp(y)) for _, x, y in rows)
     p_h = (1 - W) * mk_h + W * pm_h
     gap = abs(pm_h - mk_h)
     ets = t.astimezone(ET)
     print(f"{away} @ {home}  {ets:%a %d %b %H:%M} ET gamePk {g['gamePk']}  home: model {pm_h:.3f} market {mk_h:.3f} blend {p_h:.3f} gap {gap:.3f} books={len(rows)}")
-    print(f"   SP {pa_n or 'TBD'} (adj {padj(pa_id):+.0f}) vs {ph_n or 'TBD'} (adj {padj(ph_id):+.0f})")
+    info = lambda pid: (f"n={P.get(pid, (0, 0))[1]:.0f}, rest {(t.astimezone(ET).date() - LS[pid]).days}d" if pid in LS else "no starts") if pid else ""
+    print(f"   SP {pa_n or 'TBD'} ({info(pa_id)}, adj {padj(pa_id):+.0f}) vs {ph_n or 'TBD'} ({info(ph_id)}, adj {padj(ph_id):+.0f})  [{g['gameType']}]"
+          + (f"  GUARD: {'; '.join(notes)}" if notes else ""))
     for side, team, pb, pmod, i in (("away", away, 1 - p_h, 1 - pm_h, 1), ("home", home, p_h, pm_h, 2)):
         b = max(rows, key=lambda r: dec(r[i])); d = dec(b[i])
         ev_b = pb * (d - 1) - (1 - pb); ev_m = pmod * (d - 1) - (1 - pmod)
@@ -207,6 +241,7 @@ for away, home, start, rows in market:
         if tier and not (BAND[0] <= b[i] <= BAND[1]): tier, why = "", "outside price band"
         if tier and gap > DISAGREE_CAP: tier, why = "", "model/market gap too big"
         if tier and pending: tier, why = "", "probable pitcher not listed"
+        if tier and notes: tier, why = "", "; ".join(notes)
         if tier and len(rows) < 6: tier, why = "", "fewer than 6 books"
         stk = stake(ev_b, d, .25, .02) if tier == "STRONG" else (stake(ev_m, d, .125, .01) if tier else 0)
         print(f"   {team[:22]:22} blend {pb:.3f} model {pmod:.3f} best {b[0]} {b[i]:+d} EV blend {ev_b*100:+.1f}% model {ev_m*100:+.1f}%"
