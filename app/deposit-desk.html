@@ -1,0 +1,375 @@
+<title>Deposit Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;600;700&display=swap">
+<style>
+/* Layout: one narrow column. A single raised panel for the next buy, then plain ruled sections for review and log. */
+:root {
+  --bg: #F2F5F3;
+  --surface: #FFFFFF;
+  --ink: #14201B;
+  --muted: #566860;
+  --line: #D3DCD7;
+  --accent: #0B6B4D;
+  --accent-ink: #FFFFFF;
+  --warn: #8F5400;
+  --warn-bg: #FBEFD9;
+  --bad: #B3261E;
+  --font-body: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1512; --surface: #16201C; --ink: #E5EEE9; --muted: #98A9A0; --line: #2A3832;
+    --accent: #5ED0A1; --accent-ink: #06130D; --warn: #E8B45A; --warn-bg: #33270F; --bad: #FF8A80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1512; --surface: #16201C; --ink: #E5EEE9; --muted: #98A9A0; --line: #2A3832;
+  --accent: #5ED0A1; --accent-ink: #06130D; --warn: #E8B45A; --warn-bg: #33270F; --bad: #FF8A80;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+main {
+  max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;
+  padding-block: 24px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1 { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+.eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.sub { color: var(--muted); max-width: 52ch; }
+.mono, input, td.num, .big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.due { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.pill { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.pill.ok { color: var(--accent); }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
+input, select { font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); min-width: 0; width: 100%; box-sizing: border-box; }
+select { font-family: var(--font-body); }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.result { display: flex; flex-direction: column; gap: 2px; }
+.big { font-size: clamp(30px, 9vw, 42px); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.hint { font-size: 14px; color: var(--muted); }
+.hint.warn { color: var(--warn); }
+button { font-family: var(--font-body); font-size: 16px; font-weight: 600; cursor: pointer; border-radius: 6px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border: 0; padding: 12px 18px; }
+button.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+button.quiet { background: none; border: 1px solid var(--line); color: var(--ink); padding: 8px 14px; font-size: 14px; }
+button.row-btn { background: none; border: 0; color: var(--muted); padding: 4px 6px; font-size: 13px; text-decoration: underline; }
+button.row-btn.confirm { color: var(--bad); }
+
+section { display: flex; flex-direction: column; gap: 12px; }
+.list { margin: 0; display: flex; flex-direction: column; }
+.list > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.list dt { color: var(--muted); }
+.list dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.gain-pos { color: var(--accent); }
+.gain-neg { color: var(--bad); }
+.note { font-size: 14px; color: var(--muted); max-width: 60ch; }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th.num, td.num { text-align: right; }
+td.side-sell { color: var(--warn); }
+
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font-weight: 600; }
+.addform { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.banner { background: var(--warn-bg); color: var(--warn); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+#toast { min-height: 1.4em; font-size: 14px; color: var(--accent); }
+footer { color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+@media (prefers-reduced-motion: no-preference) { button.primary { transition: opacity 0.15s; } }
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">VTI &middot; every two weeks</span>
+    <h1>Deposit Desk</h1>
+    <p class="sub">Work out what this deposit buys, log it after you place the order in Robinhood, and see how the plan is going.</p>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <div class="panel" aria-labelledby="next-h">
+    <h2 id="next-h">Next buy</h2>
+    <div class="due"><span id="due-pill" class="pill">Checking schedule</span><span id="due-text" class="hint"></span></div>
+    <div class="fields">
+      <label for="amt">Deposit ($)
+        <input id="amt" type="number" inputmode="decimal" min="1" step="0.01" value="20">
+      </label>
+      <label for="px">VTI price ($)
+        <input id="px" type="number" inputmode="decimal" min="0" step="0.01" placeholder="from the app">
+      </label>
+    </div>
+    <div class="result" aria-live="polite">
+      <span class="hint">Buy about</span>
+      <span class="big" id="shares-out">&mdash;</span>
+      <span class="hint" id="shares-sub"></span>
+    </div>
+    <p class="hint" id="price-note"></p>
+    <div class="actions">
+      <button class="primary" id="log-btn" type="button">Log this buy</button>
+      <span class="hint">After the order fills, set the price above to your actual fill, then log it.</span>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <section aria-labelledby="rev-h">
+    <h2 id="rev-h">Review</h2>
+    <div id="review"></div>
+  </section>
+
+  <section aria-labelledby="log-h">
+    <h2 id="log-h">Trade log</h2>
+    <div id="log"></div>
+    <details>
+      <summary>Add another trade</summary>
+      <form class="addform" id="addform" autocomplete="off">
+        <div class="fields">
+          <label for="f-date">Date<input id="f-date" type="date" required></label>
+          <label for="f-ticker">Ticker<input id="f-ticker" type="text" value="VTI" maxlength="6" required style="text-transform:uppercase"></label>
+          <label for="f-side">Side<select id="f-side"><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
+          <label for="f-shares">Shares<input id="f-shares" type="number" inputmode="decimal" step="any" min="0" required></label>
+          <label for="f-price">Price ($)<input id="f-price" type="number" inputmode="decimal" step="any" min="0" required></label>
+        </div>
+        <div class="actions"><button class="quiet" type="submit">Add entry</button><span class="hint" id="form-msg"></span></div>
+      </form>
+    </details>
+    <div class="actions"><button class="quiet" id="export-btn" type="button" hidden>Export CSV for the repo journal</button></div>
+  </section>
+
+  <footer>
+    <span id="price-asof"></span>
+    <span>Planning aid, not advice. Orders are placed by hand in your broker app.</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var S = { db: null, trades: [], prices: null, priceTouched: false, confirmId: null, dl: null };
+  var CORE = 'VTI';
+  var PERIOD = 14;
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function money(n) { return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function signedMoney(n) { return (n < 0 ? '-' : '+') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function floor6(x) { return Math.floor(x * 1e6 + 1e-9) / 1e6; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function dayNum(s) { return Math.round(Date.parse(s + 'T00:00:00Z') / 86400000); }
+  function addDays(s, n) { return new Date((dayNum(s) + n) * 86400000).toISOString().slice(0, 10); }
+  function fmtDate(s) { return new Date(s + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
+  function toast(msg) { $('toast').textContent = msg; clearTimeout(toast.t); toast.t = setTimeout(function () { $('toast').textContent = ''; }, 4000); }
+
+  function sortedTrades() {
+    return S.trades.slice().sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+  }
+
+  function stats() {
+    var t = sortedTrades(), invested = 0, held = {}, lastPx = {}, buyDates = [];
+    t.forEach(function (r) {
+      var sign = r.side === 'buy' ? 1 : -1;
+      invested += sign * r.shares * r.price;
+      held[r.ticker] = (held[r.ticker] || 0) + sign * r.shares;
+      lastPx[r.ticker] = r.price;
+      if (r.side === 'buy' && buyDates.indexOf(r.date) < 0) buyDates.push(r.date);
+    });
+    var value = 0, atCost = [];
+    Object.keys(held).forEach(function (k) {
+      if (Math.abs(held[k]) < 1e-9) return;
+      var p = S.prices && typeof S.prices[k] === 'number' ? S.prices[k] : null;
+      if (p === null) { p = lastPx[k]; atCost.push(k); }
+      value += held[k] * p;
+    });
+    var gaps = 0;
+    for (var i = 1; i < buyDates.length; i++) if (dayNum(buyDates[i]) - dayNum(buyDates[i - 1]) > 21) gaps++;
+    return { t: t, invested: invested, value: value, held: held, atCost: atCost, buyDates: buyDates, gaps: gaps };
+  }
+
+  function xirr(flows, endValue, endDate) {
+    var t0 = dayNum(flows[0].date);
+    function npv(r) {
+      var s = endValue / Math.pow(1 + r, (dayNum(endDate) - t0) / 365);
+      flows.forEach(function (f) { s -= f.amount / Math.pow(1 + r, (dayNum(f.date) - t0) / 365); });
+      return s;
+    }
+    var lo = -0.99, hi = 10;
+    if (npv(lo) * npv(hi) > 0) return null;
+    for (var i = 0; i < 200; i++) { var mid = (lo + hi) / 2; if (npv(lo) * npv(mid) <= 0) hi = mid; else lo = mid; }
+    return (lo + hi) / 2;
+  }
+
+  function renderNext() {
+    var amount = parseFloat($('amt').value), price = parseFloat($('px').value);
+    var okAmt = amount > 0, okPx = price > 0;
+    var shares = okAmt && okPx ? floor6(amount / price) : 0;
+    $('shares-out').textContent = shares > 0 ? shares.toFixed(4) + ' ' + CORE : '—';
+    $('shares-sub').textContent = shares > 0 ? 'about ' + money(shares * price) + ' at ' + money(price) + ' a share' : (okPx ? 'Enter a deposit amount.' : 'Enter the current VTI price from your broker app.');
+    var note = $('price-note');
+    if (okAmt && amount < 1) { note.textContent = 'Broker minimums for fractional orders are often $1. Check the app before placing this.'; note.className = 'hint warn'; }
+    else { note.textContent = ''; note.className = 'hint'; }
+    $('log-btn').disabled = !(shares > 0);
+
+    var st = stats(), pill = $('due-pill'), txt = $('due-text');
+    if (!st.buyDates.length) {
+      pill.textContent = 'First buy'; pill.className = 'pill ok'; txt.textContent = 'Nothing logged yet. Today works as a start date.';
+    } else {
+      var last = st.buyDates[st.buyDates.length - 1], due = addDays(last, PERIOD), diff = dayNum(due) - dayNum(todayStr());
+      if (diff > 0) { pill.textContent = 'Due in ' + diff + (diff === 1 ? ' day' : ' days'); pill.className = 'pill ok'; txt.textContent = 'Next buy ' + fmtDate(due) + '. Last buy ' + fmtDate(last) + '.'; }
+      else if (diff === 0) { pill.textContent = 'Due today'; pill.className = 'pill warn'; txt.textContent = 'Last buy ' + fmtDate(last) + '.'; }
+      else { pill.textContent = Math.abs(diff) + (Math.abs(diff) === 1 ? ' day' : ' days') + ' overdue'; pill.className = 'pill warn'; txt.textContent = 'Was due ' + fmtDate(due) + '. Buy now, do not double up.'; }
+    }
+  }
+
+  function renderReview() {
+    var el = $('review'), st = stats();
+    if (!st.t.length) { el.innerHTML = '<div class="empty">The review fills in after your first logged buy. It tracks what you have put in, what it is worth, and whether deposits are staying on schedule.</div>'; return; }
+    var gain = st.value - st.invested, pct = st.invested > 0 ? gain / st.invested : 0;
+    var last = st.buyDates.length ? st.buyDates[st.buyDates.length - 1] : null;
+    var since = last ? dayNum(todayStr()) - dayNum(last) : null;
+    var firstDate = st.t[0].date, years = (dayNum(todayStr()) - dayNum(firstDate)) / 365;
+    var annual = 'After one year of history';
+    if (years >= 1) {
+      var flows = st.t.map(function (r) { return { date: r.date, amount: (r.side === 'buy' ? 1 : -1) * r.shares * r.price }; });
+      var r = xirr(flows, st.value, todayStr());
+      annual = r === null ? 'n/a' : (r * 100).toFixed(1) + '% a year';
+    }
+    var rows = [
+      ['Money put in', money(st.invested)],
+      ['Worth now', money(st.value)],
+      ['Gain or loss', '<span class="' + (gain >= 0 ? 'gain-pos' : 'gain-neg') + '">' + signedMoney(gain) + ' (' + (pct >= 0 ? '+' : '') + (pct * 100).toFixed(1) + '%)</span>'],
+      ['Buys logged', String(st.buyDates.length) + (since !== null ? ' &middot; last ' + since + (since === 1 ? ' day' : ' days') + ' ago' : '')],
+      ['Gaps over 3 weeks', st.gaps === 0 ? 'None' : String(st.gaps)],
+      ['Annualized return', annual]
+    ];
+    var html = '<dl class="list">' + rows.map(function (x) { return '<div><dt>' + x[0] + '</dt><dd>' + x[1] + '</dd></div>'; }).join('') + '</dl>';
+    var notes = [];
+    var tickers = Object.keys(st.held).filter(function (k) { return Math.abs(st.held[k]) > 1e-9; });
+    if (tickers.every(function (k) { return k === 'VTI' || k === 'SPY'; })) notes.push('Everything is in the benchmark fund, so there is nothing to beat yet. A comparison against SPY becomes useful once you hold anything else.');
+    if (st.atCost.length) notes.push(esc(st.atCost.join(', ')) + (st.atCost.length === 1 ? ' is' : ' are') + ' valued at your last trade price because no market price is loaded.');
+    if (years < 1) notes.push('Annualized returns are hidden until there is a year of history. Before that they swing too much to mean anything.');
+    el.innerHTML = html + notes.map(function (n) { return '<p class="note" style="margin-top:10px">' + n + '</p>'; }).join('');
+  }
+
+  function renderLog() {
+    var el = $('log'), st = stats();
+    if (!st.t.length) { el.innerHTML = '<div class="empty">No trades yet. Log your first buy above and it appears here.</div>'; return; }
+    var rows = st.t.slice().reverse().map(function (r) {
+      var del = S.confirmId === r.id ? '<button class="row-btn confirm" data-del="' + esc(r.id) + '" type="button">Confirm delete</button>' : '<button class="row-btn" data-del="' + esc(r.id) + '" type="button" aria-label="Delete trade from ' + esc(r.date) + '">Delete</button>';
+      return '<tr><td>' + esc(fmtDate(r.date)) + '</td><td>' + esc(r.ticker) + '</td><td class="side-' + esc(r.side) + '">' + esc(r.side) + '</td><td class="num">' + Number(r.shares).toFixed(4) + '</td><td class="num">' + money(Number(r.price)) + '</td><td class="num">' + money(r.shares * r.price) + '</td><td>' + del + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<div class="tablewrap"><table><thead><tr><th>Date</th><th>Ticker</th><th>Side</th><th class="num">Shares</th><th class="num">Price</th><th class="num">Amount</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderFooter() {
+    var p = S.prices;
+    $('price-asof').textContent = p && p.asOf ? 'Prices loaded as of the ' + fmtDate(p.asOf) + ' close. Ask Claude to refresh them; the price box above always wins.' : 'No market prices loaded yet. Ask Claude to load them, or type the price in.';
+  }
+
+  function renderAll() { renderNext(); renderReview(); renderLog(); renderFooter(); }
+
+  function applyPrice() {
+    if (!S.priceTouched && S.prices && typeof S.prices[CORE] === 'number') $('px').value = S.prices[CORE].toFixed(2);
+  }
+
+  function addTrade(rec) {
+    rec.createdAt = Date.now();
+    if (!S.db) { rec.id = 'local' + rec.createdAt; S.trades.push(rec); renderAll(); toast('Logged for this visit only.'); return Promise.resolve(); }
+    return S.db.collection('trades').add(rec).then(function () { toast('Logged.'); }).catch(function (e) {
+      toast('Could not save (' + ((e && e.code) || 'error') + '). Your entry was not kept.');
+    });
+  }
+
+  function deleteTrade(id) {
+    if (!S.db) { S.trades = S.trades.filter(function (r) { return r.id !== id; }); renderAll(); return; }
+    S.db.doc('trades/' + id).delete().catch(function (e) { toast('Could not delete (' + ((e && e.code) || 'error') + ').'); });
+  }
+
+  function csvCell(v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function buildCsv() {
+    var head = 'date,ticker,side,shares,price,sleeve,reason,invalidation,review_date,fees';
+    var rows = sortedTrades().map(function (r) { return [r.date, r.ticker, r.side, r.shares, r.price, r.sleeve || 'core', csvCell(r.note || ''), '', '', 0].join(','); });
+    return [head].concat(rows).join('\n') + '\n';
+  }
+
+  $('amt').addEventListener('input', function () { lsSet('dd-amount', $('amt').value); renderNext(); });
+  $('px').addEventListener('input', function () { S.priceTouched = true; renderNext(); });
+  $('log-btn').addEventListener('click', function () {
+    var amount = parseFloat($('amt').value), price = parseFloat($('px').value);
+    var shares = floor6(amount / price);
+    if (!(shares > 0)) return;
+    $('log-btn').disabled = true;
+    addTrade({ date: todayStr(), ticker: CORE, side: 'buy', shares: shares, price: price, sleeve: 'core', note: 'biweekly deposit' }).then(renderAll);
+  });
+
+  $('log').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button[data-del]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-del');
+    if (S.confirmId === id) { S.confirmId = null; deleteTrade(id); renderLog(); }
+    else { S.confirmId = id; renderLog(); setTimeout(function () { if (S.confirmId === id) { S.confirmId = null; renderLog(); } }, 4000); }
+  });
+
+  $('f-date').value = todayStr();
+  $('addform').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var rec = {
+      date: $('f-date').value, ticker: $('f-ticker').value.trim().toUpperCase(), side: $('f-side').value,
+      shares: parseFloat($('f-shares').value), price: parseFloat($('f-price').value), sleeve: $('f-ticker').value.trim().toUpperCase() === CORE ? 'core' : 'other', note: 'manual entry'
+    };
+    var msg = $('form-msg');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rec.date) || !/^[A-Z.]{1,6}$/.test(rec.ticker) || !(rec.shares > 0) || !(rec.price > 0)) { msg.textContent = 'Check the date, ticker, shares and price.'; return; }
+    msg.textContent = '';
+    addTrade(rec).then(function () { $('f-shares').value = ''; $('f-price').value = ''; renderAll(); });
+  });
+
+  $('export-btn').addEventListener('click', function () {
+    if (!S.dl || !S.trades.length) { toast('Nothing to export yet.'); return; }
+    S.dl.save({ filename: 'trades.csv', data: buildCsv() }).then(function () { toast('Saved.'); }).catch(function (e) {
+      if (!e || e.code !== 'declined') toast('Could not save the file.');
+    });
+  });
+
+  var saved = lsGet('dd-amount');
+  if (saved && parseFloat(saved) > 0) $('amt').value = saved;
+  renderAll();
+
+  function cap(name) {
+    try { return window.claude && window.claude.use ? Promise.resolve(window.claude.use(name)).catch(function () { return null; }) : Promise.resolve(null); }
+    catch (e) { return Promise.resolve(null); }
+  }
+
+  cap('db').then(function (db) {
+    S.db = db;
+    if (!db) { $('banner').hidden = false; $('banner').textContent = 'Saving is not available in this view, so entries last only until you leave the page.'; return; }
+    db.collection('trades').onSnapshot(function (snap) {
+      S.trades = snap.docs.map(function (d) { var o = d.data(); o.id = d.id; return o; });
+      renderAll();
+    }, function () { $('banner').hidden = false; $('banner').textContent = 'The trade log could not be loaded. Reload the page to try again.'; });
+    db.doc('prices/latest').onSnapshot(function (snap) {
+      S.prices = snap.exists ? snap.data() : null;
+      applyPrice(); renderAll();
+    }, function () {});
+  });
+
+  cap('downloads').then(function (dl) { S.dl = dl; if (dl) $('export-btn').hidden = false; });
+})();
+</script>
