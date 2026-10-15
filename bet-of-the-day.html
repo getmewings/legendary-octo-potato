@@ -50,7 +50,7 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wed 14 Oct 2026 · NHL, NFL, college football</div>
+    <div class="eyebrow">Wed 14 Oct 2026 · NHL, NFL, college football, NBA, MLB</div>
     <h1>Bet of the Day</h1>
   </header>
 
@@ -76,19 +76,19 @@ td:nth-child(n+3),th:nth-child(n+3){text-align:right;font-family:var(--mono)}
         <tr><td>CFB KENN</td><td>7:30 pm</td><td>54.8</td><td>−135</td><td>−4.5%</td><td>−3.9%</td></tr>
       </tbody>
     </table></div>
-    <p class="note">Every side is shown. None clears the bar: a Strong bet needs blended EV of 2% or more, and a Model pick needs model EV of 3% or more with blended EV at or above zero. Dodgers–Brewers is not modeled.</p>
+    <p class="note">Every side is shown. None clears the bar: a Strong bet needs blended EV of 2% or more, and a Model pick needs model EV of 3% or more with blended EV at or above zero. </p>
   </section>
 
   <section class="premise">
     <h2>How the call is made</h2>
-    <p>Waiting for a book to misprice a line is one way to find value. This page also makes its own number. It rates every team in the NHL, NFL and college football from past results, with an Elo model that credits margin of victory, home field and a pull back toward average each new season. It then compares its win probability to the eight-book market consensus.</p>
+    <p>Waiting for a book to misprice a line is one way to find value. This page also makes its own number. It rates every team in the NHL, NFL, college football, NBA and MLB from past results, with an Elo model that credits margin of victory, home field and a pull back toward average each new season. The MLB model also rates each starting pitcher, and the NBA model penalizes a team on the second night of a back-to-back. It then compares its win probability to the eight-book market consensus.</p>
     <ol>
       <li><b>Strong bet.</b> Blended EV of 2% or more. Quarter Kelly, capped at 2% of bankroll.</li>
       <li><b>Model pick.</b> Model-only EV of 3% or more, and blended EV at or above zero. One-eighth Kelly, capped at 1%.</li>
       <li><b>No call.</b> Neither clears.</li>
     </ol>
-    <p><b>Fit.</b> NFL and college football settings were tuned before 2025, then scored on 2025: log loss 0.636 over 272 NFL games (0.690 for always picking the home rate) and 0.548 over 761 college games (0.676). The NHL settings were tuned on the same 2,897 games they are scored on, so 0.680 against 0.690 is slightly optimistic. These beat a naive baseline. None has been shown to beat the market, and the ledger below is how that gets tested. The model's weight in the blend only goes up if the record earns it.</p>
-    <p><b>Lineups.</b> Starting quarterbacks and goalies move prices more than anything the ratings see, so every call carries guards. NFL: the quarterback comes from the depth chart and the injury feed. A quarterback listed out or doubtful gets a fixed backup penalty, and a questionable one means no call. NHL: the goalie comes from DailyFaceoff, shifted by last season's save percentage. An unlisted goalie means no call. No call is made if the model and the market differ by more than 8 points (NHL) or 12 points (football), because a gap that large is usually news the model cannot see. Only moneylines between −300 and +300 qualify. Only games that start today by the Eastern clock count. A call is void if the named starter does not play.</p>
+    <p><b>Fit.</b> NFL and college football settings were tuned before 2025, then scored on 2025: log loss 0.636 over 272 NFL games (0.690 for always picking the home rate) and 0.548 over 761 college games (0.676). The NHL settings were tuned on the same 2,897 games they are scored on, so 0.680 against 0.690 is slightly optimistic. NBA, tuned before 2025-26 and scored on it: log loss 0.595 over 1,235 games (0.687 baseline). That is unusually good for a rating model, so the live record matters more than that number. MLB, scored on 2025: 0.679 over 2,430 games (0.690 baseline), and 0.680 without the pitcher term. MLB ratings add little over a baseline, so the model gets a smaller weight in the blend (15%, against 30% for the NHL and football, 20% for the NBA). These beat a naive baseline. None has been shown to beat the market, and the ledger below is how that gets tested. The model's weight in the blend only goes up if the record earns it.</p>
+    <p><b>Lineups.</b> Starting quarterbacks and goalies move prices more than anything the ratings see, so every call carries guards. NFL: the quarterback comes from the depth chart and the injury feed. A quarterback listed out or doubtful gets a fixed backup penalty, and a questionable one means no call. NHL: the goalie comes from DailyFaceoff, shifted by last season's save percentage. An unlisted goalie means no call. MLB: both probable pitchers must be listed, and each is rated from his earlier starts only. NBA: each team's two most frequent scoring leaders count as its stars, and any of them listed out, doubtful, questionable or day-to-day means no call. No call is made if the model and the market differ by more than 8 points (NHL, MLB) or 12 points (football, NBA), because a gap that large is usually news the model cannot see. Only moneylines between −300 and +300 qualify. Only games that start today by the Eastern clock count. A call is void if the named starter does not play.</p>
   </section>
 
   <section class="verdict" aria-labelledby="l">
