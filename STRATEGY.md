@@ -26,7 +26,7 @@ Conclusion: there is no demonstrated reason yet to run anything but the index fu
 
 **Phase 1 (now): 100% core.** Buy VTI (or another broad US total-market ETF) with every deposit. Fractional shares mean the full $20 is invested each time.
 
-**Phase 2 (proposed trigger: portfolio over $2,000):** optional experiments, each journaled, together capped at 30% of the portfolio.
+**Phase 2 (proposed trigger: portfolio over $2,000):** optional experiments, each journaled, together capped at 30% of the portfolio. The sector tilt takes 30% of each deposit on its own, so if discretionary positions are added, their money comes out of the tilt's share.
 - Buy-only sector tilt: `python -m hub.plan --deposit N --tilt`. Never sells. Rotating picks only changes where new money goes.
 - Discretionary stocks, under the rules below.
 

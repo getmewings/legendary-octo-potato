@@ -233,5 +233,7 @@ def test_core_sector_tilt_splits_deposits_and_never_sells():
     assert w["CORE"] == pytest.approx(0.7)
     assert sum(w.values()) == pytest.approx(1.0)
     assert len(w) == 3
-    r = run_backtest(s, p, str(idx[300].date()), deposit=20.0, slippage_bps=0.0)
-    assert r.equity.iloc[-1] > 0 and r.cost_paid == 0.0
+    r = run_backtest(s, p, str(idx[300].date()), deposit=20.0, slippage_bps=10.0)
+    # Buy-only: every traded dollar is a deposit dollar. Any sale would push this above contributed.
+    assert r.traded_notional == pytest.approx(r.contributed, rel=1e-6)
+    assert r.cost_paid > 0

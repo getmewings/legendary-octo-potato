@@ -11,7 +11,7 @@ import pandas as pd
 
 from .backtest import run_backtest
 from .data import load_prices
-from .strategies import BuyAndHold, CoreSectorTilt, SectorMomentum
+from .strategies import BuyAndHold, CoreSectorTilt, SectorMomentum, TrendFilter
 
 WARMUP_DAYS = 450  # calendar days of history fetched before --start
 
@@ -25,7 +25,7 @@ def main() -> None:
     ap.add_argument("--slippage-bps", type=float, default=5.0)
     args = ap.parse_args()
 
-    strategies = [BuyAndHold("SPY"), CoreSectorTilt("SPY", 0.7), SectorMomentum()]
+    strategies = [BuyAndHold("SPY"), CoreSectorTilt("SPY", 0.7), SectorMomentum(), TrendFilter("SPY", 200)]
     tickers = sorted({t for s in strategies for t in s.tickers})
     fetch_from = (pd.Timestamp(args.start) - pd.Timedelta(days=WARMUP_DAYS)).strftime("%Y-%m-%d")
     prices = load_prices(tickers, start=fetch_from, end=args.end)
