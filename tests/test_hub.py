@@ -191,3 +191,47 @@ def test_sector_momentum_only_rebalances_on_first_bar_of_month():
     first = results[fired[0] - 260]
     assert set(first) == {"D", "C"}
     assert sum(first.values()) == pytest.approx(1.0)
+
+
+def test_buy_only_strategy_never_sells_and_deploys_all_cash():
+    class Flip:
+        """Switches target from A to B mid-way; buy_only means A must never shrink."""
+
+        name = "flip"
+        tickers = ["A", "B"]
+        buy_only = True
+
+        def decide(self, history, current):
+            if len(history) == 1:
+                return {"A": 1.0}
+            if len(history) == 30:
+                return {"B": 1.0}
+            return None
+
+    p = make_prices({"A": [100.0] * 80, "B": [50.0] * 80})
+    r = run_backtest(Flip(), p, "2020-01-01", deposit=100.0, slippage_bps=0.0)
+    # Flat prices, no slippage: nothing lost, nothing left idle after the first targets exist.
+    assert r.equity.iloc[-1] == pytest.approx(r.contributed)
+    assert r.traded_notional == pytest.approx(r.contributed - 100.0, abs=100.0)  # only deposits were traded
+    assert r.cost_paid == 0.0
+
+
+def test_core_sector_tilt_splits_deposits_and_never_sells():
+    from hub.strategies import CoreSectorTilt
+
+    rng = np.random.default_rng(1)
+    idx = pd.bdate_range("2019-01-01", periods=600)
+    names = ["A", "B", "C", "D", "E"]
+    closes = pd.DataFrame(
+        100 * np.exp(np.cumsum(rng.normal(0.0004, 0.01, (600, 6)), axis=0)),
+        index=idx,
+        columns=["CORE", *names],
+    )
+    p = Prices(open=closes.copy(), close=closes)
+    s = CoreSectorTilt("CORE", 0.7, universe=names, top_n=2)
+    w = s.decide(closes.iloc[:400], None)
+    assert w["CORE"] == pytest.approx(0.7)
+    assert sum(w.values()) == pytest.approx(1.0)
+    assert len(w) == 3
+    r = run_backtest(s, p, str(idx[300].date()), deposit=20.0, slippage_bps=0.0)
+    assert r.equity.iloc[-1] > 0 and r.cost_paid == 0.0

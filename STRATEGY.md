@@ -2,39 +2,49 @@
 
 Working draft. Numbers marked **(proposed)** are defaults to confirm or change. Nothing here is personalized financial advice, and no strategy in this repo is guaranteed to beat a plain index fund.
 
+## Situation
+
+- Taxable brokerage account (not an IRA).
+- Starting from zero, depositing about **$20 every two weeks**.
+- High risk tolerance, long horizon, US stocks only.
+
 ## Goal
 
-Grow a portfolio from zero over a long horizon using small recurring deposits. At this account size, **how much and how consistently we deposit matters far more than which stocks we pick** for the first several years. The strategy work is about not getting in the way of that, and adding a modest edge on top.
+Grow a portfolio from zero over a long horizon using small recurring deposits. At this size, **how steadily we deposit matters far more than which stocks we pick**: $20 every two weeks is about $520 a year, so even a 5-point edge in returns is a few dollars in the first years. The strategy work here is about not getting in the way of deposits, and learning, not about squeezing out returns.
 
-## Edges we actually control
+## What the backtests say
 
-1. Account type. If eligible, a Roth IRA shelters gains from tax. Retirement-account incentives such as contribution matches change over time, so verify current terms with the broker before relying on them.
-2. Costs. Commission-free trading, but spreads and slippage still cost money, so keep turnover low.
-3. Every deposit gets invested. Fractional shares mean no cash sits idle waiting for a whole share.
-4. Written rules. Decisions are made here, in advance, not in the middle of a drawdown.
+Run `python -m hub.run_backtest` (biweekly deposits, next-open fills, 5 bps per trade, pre-tax, one historical path):
 
-## Structure (proposed)
+- A 70% index / 30% buy-only sector tilt did **not** beat plain SPY with the same deposits (12.7% vs 13.1% money-weighted return since 2005, and 15.1% vs 15.3% since 2015).
+- A top-3 sector momentum portfolio that sells monthly beat SPY by a thin margin before tax (13.4% vs 13.1%), with about 4.5 times the trades. In a taxable account the monthly sales create short-term gains taxed as ordinary income, which likely erases that margin. **Not adopted.**
+- A 200-day moving-average trend filter cut the worst drawdown from -55% to -24% but left far less money at the end. **Not adopted.**
 
-| Sleeve | Target | What it holds | How it is managed |
-|---|---|---|---|
-| Core | 60% | Broad US total-market ETF (VTI) | Buy on every deposit, never time it |
-| Systematic satellite | 30% | Top-3 sector ETFs by 12-1 momentum, equal weight | Rebalance monthly, rules in `hub/strategies.py` |
-| Discretionary | 10% | Individual stocks we research | Journaled thesis required, see below |
+Conclusion: there is no demonstrated reason yet to run anything but the index fund. Active ideas stay out until the account is large enough to matter and a journaled experiment shows they add something.
 
-While the discretionary sleeve has no position backed by a thesis, its 10% is invested in the core (`hub.plan` does this automatically), so no cash sits idle. To open a discretionary position, fund it from a deposit or by trimming core at the annual rebalance.
+## Structure
 
-High risk tolerance is expressed through the satellite and discretionary sleeves (40% in total), not through leverage.
+**Phase 1 (now): 100% core.** Buy VTI (or another broad US total-market ETF) with every deposit. Fractional shares mean the full $20 is invested each time.
+
+**Phase 2 (proposed trigger: portfolio over $2,000):** optional experiments, each journaled, together capped at 30% of the portfolio.
+- Buy-only sector tilt: `python -m hub.plan --deposit N --tilt`. Never sells. Rotating picks only changes where new money goes.
+- Discretionary stocks, under the rules below.
+
+Phase 2 is optional. If the experiments do not beat the benchmark over a full year of journal entries, shrink them.
+
+High risk tolerance is expressed through time in the market and the experiment sleeve, never through leverage.
 
 ## Hard limits
 
-- **No margin. No options. No short selling** in v1. Revisit only after a year of journaled results.
+- **No margin. No options. No short selling.** Revisit only after a year of journaled results.
 - **No leveraged or inverse ETFs.**
 - Max 5% of the portfolio in any one discretionary stock, measured at cost.
-- Max 3 discretionary positions until the portfolio is large enough that 5% is worth the research time.
-- Max 1% of the portfolio at risk on any discretionary position (distance from entry to invalidation level, times shares).
-- Do not day-trade. Minimum holding period for a discretionary position is until its thesis or invalidation level is hit, not a number of hours.
+- Max 3 discretionary positions while the portfolio is small.
+- Max 1% of the portfolio at risk on any discretionary position (entry to invalidation level, times shares).
+- No day trading.
+- **Taxable account: do not sell a profitable position held under a year without a reason written in the journal.** Short-term gains are taxed as ordinary income.
 
-## Discretionary position rules
+## Discretionary position rules (Phase 2)
 
 Every discretionary buy gets an entry in `journal/trades.csv` and a thesis file made from `journal/THESIS_TEMPLATE.md` **before** the order is placed. It must state:
 
@@ -45,39 +55,38 @@ Every discretionary buy gets an entry in `journal/trades.csv` and a thesis file 
 
 If we cannot fill these in, we do not buy.
 
-## Contributions and rebalancing
+## Contributions
 
-- Deposit a fixed amount every two weeks **(amount to be set, backtests assume $100)**. Skipping a deposit is a decision that needs a journal entry.
-- Each deposit buys toward the targets above using `python -m hub.plan --deposit <amount>`. Deposits are buy-only, so they naturally pull the portfolio back toward target without selling.
-- Satellite: reselect the top 3 sector ETFs once a month, on the first trading day of the month.
-- Full rebalance of all sleeves to target once per year, or when any sleeve is more than 10 percentage points off target. In a taxable account, prefer fixing drift with new deposits to avoid realizing gains.
+- Deposit a fixed amount every two weeks **(set at $20 for now; raise it whenever income allows, since this is the biggest lever)**. Skipping a deposit is a decision that needs a journal entry.
+- Each deposit: run `python -m hub.plan --deposit 20`, place the order in the broker app by hand, log it in `journal/trades.csv`.
+- No selling to rebalance. Deposits and dividends steer the mix.
 
 ## Benchmark
 
-Everything is compared to buying SPY (or VTI) with the same deposits on the same dates. If the active sleeves cannot beat that after costs over a full market cycle, we shrink them. `python -m hub.run_backtest` does this comparison for the rules in the repo.
+Everything is compared to buying SPY (or VTI) with the same deposits on the same dates. Anything active that cannot beat that after costs and taxes over a full market cycle gets shrunk or dropped.
 
 ## Review cadence
 
-- Every deposit: run the plan, place the orders, log them.
-- Monthly: satellite rebalance, update the journal, check each discretionary position against its invalidation level.
-- Quarterly: compare actual results to the benchmark.
-- Annually: revisit this document. Changes to rules are made here, with the reason, and not after a bad week.
+- Every deposit: place the order, log it.
+- Quarterly: compare actual results to the benchmark, check any discretionary position against its invalidation level.
+- Annually: revisit this document. Rule changes are made here, with the reason, and not after a bad week.
 
 ## Backtest hygiene
 
 - Signals use the close, orders fill at the next open.
 - A cost of 5 bps per trade stands in for spread and slippage.
 - Parameters (200-day average, 12-1 momentum, top 3) are common published values and are **not** tuned to this data.
-- The backtest universe is a fixed set of long-lived sector ETFs, which avoids single-stock survivorship bias. A universe of today's large stocks would overstate results and is not used.
-- Cash earns 0% in the backtest, which understates the trend filter when interest rates are high.
+- The universe is a fixed set of long-lived sector ETFs, which avoids single-stock survivorship bias. A universe of today's large stocks would overstate results and is not used.
+- Cash earns 0% in the backtest. Taxes are not modeled.
 - One historical path is weak evidence. Treat results as a sanity check, not a forecast.
 
-## Taxes
+## Taxes (taxable account)
 
-- Taxable account: short-term gains are taxed as ordinary income, and selling at a loss then rebuying the same security within 30 days triggers the wash-sale rule. Low turnover helps on both counts.
-- Roth IRA: neither applies inside the account. Check contribution limits and eligibility for the tax year.
-- Keep this in mind, not as tax advice. Confirm with a tax professional.
+- Short-term gains (held a year or less) are taxed as ordinary income. Long-term gains usually get a lower rate.
+- Selling at a loss and rebuying the same or a substantially identical security within 30 days triggers the wash-sale rule.
+- Low turnover helps on both counts, which is why the policy is buy-and-hold with buy-only tilts.
+- Not tax advice. Confirm with a tax professional.
 
 ## Execution
 
-The hub produces signals and order lists. The user places the orders in the broker app by hand. There is no official Robinhood trading API, and unofficial ones require handing over account credentials, so credentials are never stored in this repo or in this environment.
+The hub produces order lists. The user places the orders in the broker app by hand. There is no official Robinhood trading API, and unofficial ones require handing over account credentials, so credentials are never stored in this repo or in this environment.

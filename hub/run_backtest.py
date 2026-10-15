@@ -1,6 +1,6 @@
 """Run the benchmark and strategies under biweekly deposits.
 
-    python -m hub.run_backtest --start 2005-01-03 --deposit 100
+    python -m hub.run_backtest --start 2005-01-03 --deposit 20
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import pandas as pd
 
 from .backtest import run_backtest
 from .data import load_prices
-from .strategies import BuyAndHold, SectorMomentum, TrendFilter
+from .strategies import BuyAndHold, CoreSectorTilt, SectorMomentum
 
 WARMUP_DAYS = 450  # calendar days of history fetched before --start
 
@@ -20,12 +20,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--start", default="2005-01-03")
     ap.add_argument("--end", default=None)
-    ap.add_argument("--deposit", type=float, default=100.0)
+    ap.add_argument("--deposit", type=float, default=20.0)
     ap.add_argument("--period-days", type=int, default=14)
     ap.add_argument("--slippage-bps", type=float, default=5.0)
     args = ap.parse_args()
 
-    strategies = [BuyAndHold("SPY"), TrendFilter("SPY", 200), SectorMomentum()]
+    strategies = [BuyAndHold("SPY"), CoreSectorTilt("SPY", 0.7), SectorMomentum()]
     tickers = sorted({t for s in strategies for t in s.tickers})
     fetch_from = (pd.Timestamp(args.start) - pd.Timedelta(days=WARMUP_DAYS)).strftime("%Y-%m-%d")
     prices = load_prices(tickers, start=fetch_from, end=args.end)

@@ -7,6 +7,8 @@ Model:
 - Every trade pays ``slippage_bps`` of its notional (spread/slippage proxy).
 - Fractional shares; cash earns 0%.
 - A deposit on a day with no rebalance is spent on the current target weights.
+- Strategies with ``buy_only = True`` never sell: a new target only changes how
+  future deposits are split (the tax-friendly mode for a taxable account).
 """
 
 from __future__ import annotations
@@ -98,6 +100,7 @@ def run_backtest(
     if first >= len(dates):
         raise ValueError("start is after the last available bar")
     slip = slippage_bps / 10_000.0
+    buy_only = bool(getattr(strategy, "buy_only", False))
 
     tickers = list(closes.columns)
     shares = {t: 0.0 for t in tickers}
@@ -121,6 +124,10 @@ def run_backtest(
             dep = deposit
             cash += dep
             next_deposit += pd.Timedelta(days=period_days)
+
+        promoted = False
+        if buy_only and pending is not None:
+            executed, pending, promoted = pending, None, True
 
         if pending is not None:
             # Rebalance everything to the pending target.
@@ -146,10 +153,11 @@ def run_backtest(
                 traded += spend
                 cost += spend * slip
             executed, pending = pending, None
-        elif dep and executed:
-            # Deposit with no rebalance: spend it on the current target weights.
+        elif (dep or promoted) and executed:
+            # No rebalance: spend idle cash on the current target weights.
+            avail = cash
             for t, w in executed.items():
-                spend = dep * w
+                spend = avail * w
                 if spend > 0.01:
                     shares[t] += spend / (px[t] * (1.0 + slip))
                     cash -= spend

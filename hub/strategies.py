@@ -116,3 +116,35 @@ class SectorMomentum:
             return None
         picks = list(ranking.index[: self.top_n])
         return {t: 1.0 / self.top_n for t in picks}
+
+
+class CoreSectorTilt(SectorMomentum):
+    """Core index fund plus a buy-only tilt toward the top sector ETFs.
+
+    Each deposit is split between the core and this month's top-N sectors.
+    Nothing is ever sold, so rotating picks realizes no gains in a taxable
+    account. Old picks simply stop receiving new money.
+    """
+
+    buy_only = True
+
+    def __init__(self, core: str = "SPY", core_weight: float = 0.7, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.core = core
+        self.core_weight = core_weight
+        self.name = f"{core_weight:.0%} {core} + {1 - core_weight:.0%} sector tilt (buy-only)"
+        self.tickers = [core, *self.universe]
+
+    def decide(self, history: pd.DataFrame, current: Weights | None) -> Weights | None:
+        if current is None:  # first decision: don't wait for a month boundary
+            picks = satellite_picks(history, self.universe, self.top_n, None, self.lookback, self.skip)
+        else:
+            sat = super().decide(history, current)
+            if sat is None:
+                return None
+            picks = list(sat)
+        if not picks:
+            return {self.core: 1.0}
+        weights = {self.core: self.core_weight}
+        weights.update({t: (1.0 - self.core_weight) / len(picks) for t in picks})
+        return weights
